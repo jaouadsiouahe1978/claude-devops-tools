@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Terraform
+.terraform/
+*.tfstate*
+.tfvars
+
+# Ansible
+.ansible/
+*.retry
+
+# Secrets
+.env
+secrets/
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
