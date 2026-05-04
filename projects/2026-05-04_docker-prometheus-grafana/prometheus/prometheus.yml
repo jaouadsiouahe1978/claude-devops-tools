@@ -1,0 +1,44 @@
+# Configuration Prometheus - Scrape des métriques
+# Documentation: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+
+global:
+  scrape_interval: 15s      # Par défaut, scraper chaque 15s
+  evaluation_interval: 15s  # Évaluer les règles d'alerte chaque 15s
+  external_labels:
+    monitor: 'docker-stack' # Label global ajouté à chaque métrique
+
+# Configuration des alertes (optionnel)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Fichiers de règles d'alertes (optionnel)
+rule_files:
+  # - "alert.rules"
+
+# Configuration des scrape targets
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # cAdvisor - Métriques des conteneurs
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: '/metrics'
+
+  # Node Exporter (optionnel - si vous l'ajoutez plus tard)
+  # - job_name: 'node-exporter'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+
+# Exemples de requêtes PromQL à tester :
+#
+# up                                    # Status de chaque target (1=up, 0=down)
+# rate(prometheus_http_requests_total[5m]) # Requêtes par seconde
+# container_memory_usage_bytes           # Mémoire utilisée par conteneur
+# container_cpu_usage_seconds_total      # CPU utilisé par conteneur
+# rate(container_cpu_usage_seconds_total[5m]) # CPU % par conteneur
