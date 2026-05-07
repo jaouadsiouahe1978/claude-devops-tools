@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: myapp-prod
+
+bases:
+  - ../../base
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+  team: platform
+  managed-by: kustomize
+
+replicas:
+- name: api
+  count: 3
+- name: frontend
+  count: 3
+
+images:
+- name: my-api
+  newTag: "1.0"
+- name: my-frontend
+  newTag: "1.0"
+
+patchesStrategicMerge:
+- api-resources.yaml
+
+configMapGenerator:
+- name: api-config
+  behavior: merge
+  literals:
+  - FLASK_ENV=production
+  - WORKERS=8
+  - LOG_LEVEL=WARNING

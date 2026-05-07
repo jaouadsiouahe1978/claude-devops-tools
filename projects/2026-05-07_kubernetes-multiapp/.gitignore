@@ -1,0 +1,44 @@
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Kubernetes
+.kube/
+kubeconfig
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+.env.local
+.env.*.local
+temp/
+tmp/

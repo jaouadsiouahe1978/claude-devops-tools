@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Multi-App - Frontend</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 Kubernetes Multi-Tier App</h1>
+            <p class="subtitle">Frontend Application - Kubernetes Learning Project</p>
+        </header>
+
+        <main class="main">
+            <section class="card">
+                <h2>Application Status</h2>
+                <div id="status" class="status-box">
+                    <p>Loading...</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>API Data</h2>
+                <button onclick="fetchData()" class="btn">Load Data from API</button>
+                <div id="data" class="data-box">
+                    <p>Click the button to fetch data from the backend API</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>API Metrics</h2>
+                <button onclick="fetchMetrics()" class="btn">Refresh Metrics</button>
+                <pre id="metrics" class="metrics-box">Click the button to see API metrics</pre>
+            </section>
+
+            <section class="card">
+                <h2>Frontend Info</h2>
+                <div class="info-box">
+                    <p><strong>Container Hostname:</strong> <span id="hostname">Loading...</span></p>
+                    <p><strong>Current Time:</strong> <span id="time">Loading...</span></p>
+                    <p><strong>Page Load Time:</strong> <span id="load-time">Calculating...</span></p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Kubernetes Concepts</h2>
+                <ul class="concepts">
+                    <li><strong>Deployments:</strong> Manage replicas of your pods</li>
+                    <li><strong>Services:</strong> Provide stable network access to pods</li>
+                    <li><strong>Ingress:</strong> Route external traffic to services</li>
+                    <li><strong>ConfigMaps:</strong> Manage configuration without rebuilding images</li>
+                    <li><strong>HPA:</strong> Automatically scale pods based on metrics</li>
+                    <li><strong>Kustomize:</strong> Customize Kubernetes resources for different environments</li>
+                </ul>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>DevOps Training Project | Kubernetes Learning Path</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
