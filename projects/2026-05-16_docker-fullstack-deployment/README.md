@@ -33,24 +33,35 @@ sudo apt-get install -y docker.io docker-compose-plugin
 
 ## 🚀 Étapes de réalisation
 
-### 1. Structure du projet
+### 1. Préparation
+```bash
+# Copier les variables d'environnement
+cp .env.example .env
+
+# Vérifier que Docker est bien installé
+docker --version
+docker-compose version
+```
+
+### 2. Structure du projet
 ```
 docker-fullstack-deployment/
 ├── docker-compose.yml       # Orchestration
+├── .env.example             # Exemple de config (à copier en .env)
 ├── backend/
 │   ├── Dockerfile           # Image Node.js
 │   ├── package.json         # Dépendances
-│   ├── package-lock.json    # Lock file
 │   ├── server.js            # Application
-│   └── .dockerignore        # Fichiers à ignorer
+│   └── init.sql             # Schema PostgreSQL
 ├── frontend/
-│   ├── Dockerfile           # Image frontend
-│   ├── index.html           # Page principale
+│   ├── Dockerfile           # Image Nginx
+│   ├── index.html           # Application web
+│   ├── nginx.conf           # Configuration Nginx
 │   └── .dockerignore
-└── .env                      # Variables d'environnement
+└── README.md                # Ce fichier
 ```
 
-### 2. Lancer l'application
+### 3. Lancer l'application
 ```bash
 # Se placer dans le répertoire du projet
 cd projects/2026-05-16_docker-fullstack-deployment
@@ -69,7 +80,7 @@ docker-compose ps
 # API      : http://localhost:5000
 ```
 
-### 3. Debugger et interagir
+### 4. Debugger et interagir
 ```bash
 # Entrer dans un container
 docker-compose exec backend bash
@@ -89,7 +100,7 @@ docker-compose down
 docker-compose down -v
 ```
 
-### 4. Vérifier la connexion BD
+### 5. Vérifier la connexion BD
 ```bash
 # Via curl
 curl http://localhost:5000/api/health
