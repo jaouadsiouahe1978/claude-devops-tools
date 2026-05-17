@@ -1,0 +1,19 @@
+---
+# Variables spécifiques aux serveurs de base de données
+
+postgres_version: 13
+postgres_port: 5432
+postgres_user: postgres
+postgres_password: changeme123  # À mettre dans ansible-vault en production!
+
+# Créer une DB test
+db_name: myapp_db
+db_user: myapp_user
+db_password: apppass123  # À sécuriser!
+
+# Packages
+database_packages:
+  - postgresql
+  - postgresql-contrib
+  - python3-psycopg2
+  - curl

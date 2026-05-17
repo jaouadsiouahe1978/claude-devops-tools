@@ -1,0 +1,14 @@
+---
+# Variables globales pour tous les serveurs
+
+# Mise à jour du système
+update_packages: yes
+timezone: Europe/Paris
+
+# Création d'utilisateur applicatif
+app_user: appuser
+app_group: appgroup
+app_home: /opt/app
+
+# Configuration de base
+max_open_files: 65535

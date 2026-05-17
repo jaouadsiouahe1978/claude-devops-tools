@@ -1,0 +1,7 @@
+---
+# Handlers (actions déclenchées par notify)
+
+- name: restart cron
+  service:
+    name: cron
+    state: restarted

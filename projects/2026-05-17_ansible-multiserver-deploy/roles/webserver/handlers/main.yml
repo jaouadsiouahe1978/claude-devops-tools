@@ -1,0 +1,13 @@
+---
+# Handlers pour les serveurs web
+
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+
+- name: restart flask app
+  systemd:
+    name: "{{ flask_app_name }}"
+    state: restarted
+    daemon_reload: yes

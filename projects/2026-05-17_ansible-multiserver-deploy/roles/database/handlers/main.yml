@@ -1,0 +1,7 @@
+---
+# Handlers pour les serveurs de base de données
+
+- name: restart postgresql
+  service:
+    name: postgresql
+    state: restarted

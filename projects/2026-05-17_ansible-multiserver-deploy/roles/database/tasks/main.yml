@@ -1,0 +1,56 @@
+---
+# Tâches pour configurer les serveurs de base de données (PostgreSQL)
+
+- name: Install PostgreSQL packages
+  apt:
+    name: "{{ database_packages }}"
+    state: present
+
+- name: Ensure PostgreSQL is started
+  service:
+    name: postgresql
+    enabled: yes
+    state: started
+
+- name: Create PostgreSQL database
+  postgresql_db:
+    name: "{{ db_name }}"
+    encoding: UTF8
+    locale: en_US.UTF-8
+    template: template0
+    state: present
+  become_user: postgres
+
+- name: Create PostgreSQL user
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    db: "{{ db_name }}"
+    priv: "ALL"
+    expires: infinity
+    state: present
+  become_user: postgres
+  no_log: yes
+
+- name: Configure PostgreSQL listen address
+  lineinfile:
+    path: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+    regexp: "^#listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Configure PostgreSQL pg_hba for local connections
+  lineinfile:
+    path: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
+    line: "host    {{ db_name }}    {{ db_user }}    0.0.0.0/0    md5"
+    insertafter: "# IPv4 local connections"
+  notify: restart postgresql
+
+- name: Check PostgreSQL status
+  shell: pg_isready -h localhost
+  register: pg_ready
+  changed_when: false
+
+- name: Display PostgreSQL status
+  debug:
+    msg: "PostgreSQL is running: {{ pg_ready.stdout }}"

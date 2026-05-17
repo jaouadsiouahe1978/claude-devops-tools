@@ -1,0 +1,20 @@
+[Unit]
+Description=Flask Web Application
+After=network.target
+
+[Service]
+Type=notify
+User={{ app_user }}
+WorkingDirectory={{ app_home }}
+ExecStart={{ app_home }}/venv/bin/gunicorn \
+    --workers {{ flask_workers }} \
+    --bind 127.0.0.1:{{ flask_app_port }} \
+    --access-logfile - \
+    --error-logfile - \
+    app:app
+
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

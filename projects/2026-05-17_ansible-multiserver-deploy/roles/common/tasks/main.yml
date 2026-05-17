@@ -1,0 +1,58 @@
+---
+# Tâches communes pour tous les serveurs
+
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: update_packages
+
+- name: Install common packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - htop
+      - vim
+      - net-tools
+      - sudo
+      - openssh-server
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+  notify: restart cron
+
+- name: Configure sysctl limits
+  sysctl:
+    name: "fs.file-max"
+    value: "{{ max_open_files }}"
+    state: present
+    reload: yes
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    home: "{{ app_home }}"
+    shell: /bin/bash
+    createhome: yes
+    state: present
+
+- name: Create app directory
+  file:
+    path: "{{ app_home }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: 0755
+
+- name: Add sudo privileges for app user
+  lineinfile:
+    path: /etc/sudoers.d/appuser
+    line: "{{ app_user }} ALL=(ALL) NOPASSWD: /usr/sbin/service"
+    create: yes
+    mode: 0440
+    validate: /usr/sbin/visudo -cf %s

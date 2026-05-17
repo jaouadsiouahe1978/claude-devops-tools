@@ -1,0 +1,24 @@
+---
+# Playbook principal pour déployer l'infrastructure multi-serveur
+# Usage: ansible-playbook deploy.yml -i inventory.ini
+
+- name: Deploy Common Configuration on All Servers
+  hosts: all
+  become: yes  # Utiliser sudo
+  gather_facts: yes
+  roles:
+    - common
+
+- name: Deploy Web Servers (Nginx + Flask)
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  roles:
+    - webserver
+
+- name: Deploy Database Servers (PostgreSQL)
+  hosts: databases
+  become: yes
+  gather_facts: yes
+  roles:
+    - database
