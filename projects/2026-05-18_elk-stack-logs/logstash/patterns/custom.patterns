@@ -1,0 +1,8 @@
+# Custom Nginx patterns
+NGINX_ERROR %{DATA:timestamp} \[%{LOGLEVEL:severity}\] %{DATA:error_message}
+
+# Application log format
+APP_LOG %{TIMESTAMP_ISO8601:timestamp} \[%{LOGLEVEL:log_level}\] %{DATA:logger} - %{GREEDYDATA:message}
+
+# Custom metric format
+METRIC %{TIMESTAMP_ISO8601:timestamp} \| %{WORD:metric_name}=%{NUMBER:metric_value} \| %{GREEDYDATA:labels}
