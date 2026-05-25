@@ -1,0 +1,22 @@
+{{ define "slack.default.title" -}}
+{{ if eq .Status "firing" }}
+🔴 ALERTE ACTIVE
+{{- else }}
+✅ ALERTE RÉSOLVÉE
+{{- end }}
+{{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "slack.default.text" -}}
+{{ range .Alerts.Firing -}}
+*Sévérité:* {{ .Labels.severity }}
+*Instance:* {{ .Labels.instance }}
+*Job:* {{ .Labels.job }}
+{{ if .Annotations.summary }}*Résumé:* {{ .Annotations.summary }}{{ end }}
+{{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
+{{ end }}
+
+{{ range .Alerts.Resolved -}}
+✅ *Alerte résolvue*: {{ .Labels.alertname }} sur {{ .Labels.instance }}
+{{ end }}
+{{- end }}

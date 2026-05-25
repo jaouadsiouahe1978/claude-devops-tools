@@ -1,0 +1,102 @@
+groups:
+  - name: system
+    interval: 30s
+    rules:
+      # Alerte CPU haute
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 75
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "CPU élevée détectée sur {{ $labels.instance }}"
+          description: "L'utilisation CPU sur {{ $labels.instance }} dépasse 75% (valeur: {{ $value | humanize }}%)"
+
+      # Alerte CPU critique
+      - alert: CriticalCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 90
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "CPU CRITIQUE sur {{ $labels.instance }}"
+          description: "L'utilisation CPU sur {{ $labels.instance }} dépasse 90% (valeur: {{ $value | humanize }}%)"
+
+      # Alerte mémoire haute
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Mémoire élevée sur {{ $labels.instance }}"
+          description: "Utilisation mémoire: {{ $value | humanize }}%"
+
+      # Alerte disque plein
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Espace disque faible sur {{ $labels.instance }}"
+          description: "Espace disponible: {{ $value | humanize }}%"
+
+      # Alerte disque critique
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Espace disque CRITIQUE sur {{ $labels.instance }}"
+          description: "Espace disponible: {{ $value | humanize }}%"
+
+      # Alerte charge système
+      - alert: HighLoadAverage
+        expr: node_load1 > 4
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Charge système élevée sur {{ $labels.instance }}"
+          description: "Load average 1min: {{ $value | humanize }}"
+
+      # Alerte service down
+      - alert: NodeDown
+        expr: up{job="node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Node {{ $labels.instance }} est down"
+          description: "Le node {{ $labels.instance }} n'est pas accessible depuis 1 minute"
+
+      # Alerte conteneur down
+      - alert: ContainerDown
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "cAdvisor {{ $labels.instance }} est inaccessible"
+          description: "Le service cAdvisor sur {{ $labels.instance }} ne répond pas"
+
+      # Alerte réseau
+      - alert: HighNetworkIO
+        expr: rate(node_network_transmit_bytes_total[5m]) > 10000000
+        for: 3m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "I/O réseau élevée sur {{ $labels.instance }}"
+          description: "Trafic réseau: {{ $value | humanize }}B/s"
