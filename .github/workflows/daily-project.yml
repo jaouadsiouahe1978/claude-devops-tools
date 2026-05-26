@@ -1,0 +1,44 @@
+name: Daily DevOps Project Generator
+
+on:
+  schedule:
+    # Exécute chaque jour à 09:00 UTC (11:00 CEST)
+    - cron: '0 9 * * *'
+  workflow_dispatch:  # Permet d'exécuter manuellement
+
+jobs:
+  generate-project:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "DevOps Bot"
+
+      - name: Generate daily project
+        run: |
+          python scripts/generate_daily_project.py
+
+      - name: Push changes
+        if: success()
+        run: |
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
