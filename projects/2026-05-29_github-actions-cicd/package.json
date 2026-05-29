@@ -1,0 +1,32 @@
+{
+  "name": "devops-app",
+  "version": "1.0.0",
+  "description": "Sample DevOps application with GitHub Actions CI/CD",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --write 'src/**/*.js' 'tests/**/*.js'",
+    "format:check": "prettier --check 'src/**/*.js' 'tests/**/*.js'",
+    "build": "echo 'Build step'"
+  },
+  "keywords": [
+    "devops",
+    "ci",
+    "cd",
+    "github-actions"
+  ],
+  "author": "Jaouad",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

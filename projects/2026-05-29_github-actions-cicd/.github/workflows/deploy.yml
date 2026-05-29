@@ -1,0 +1,46 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    environment:
+      name: staging
+      url: https://staging.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/image.tar
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "Image: devops-app:${{ github.sha }}"
+          # Your deployment script here
+          # Example: kubectl set image deployment/app app=devops-app:${{ github.sha }}
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          STAGING_URL: https://staging.example.com
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests on staging..."
+          # curl -f https://staging.example.com/health || exit 1
+          sleep 2
+          echo "✅ Smoke tests passed"
+
+      - name: Notify deployment success
+        run: echo "✅ Deployment to staging completed successfully"

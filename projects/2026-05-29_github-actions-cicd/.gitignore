@@ -1,0 +1,17 @@
+node_modules/
+.npm
+.env
+.env.local
+.env.*.local
+coverage/
+dist/
+build/
+.jest/
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/
+*.iml

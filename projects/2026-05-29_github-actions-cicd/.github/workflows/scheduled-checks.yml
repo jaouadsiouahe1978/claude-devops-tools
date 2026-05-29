@@ -1,0 +1,89 @@
+name: Scheduled Security & Maintenance Checks
+
+on:
+  schedule:
+    # Run security scan every Monday at 2 AM UTC
+    - cron: '0 2 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Vulnerability Scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for outdated packages
+        run: npm outdated || true
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    name: Check Dependencies
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: License audit
+        run: npm list
+        continue-on-error: true
+
+  container-scan:
+    runs-on: ubuntu-latest
+    name: Scan Container Base Image
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build test image
+        run: docker build -t devops-app:test .
+        continue-on-error: true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'devops-app:test'
+          format: 'sarif'
+          output: 'trivy-container.sarif'
+        continue-on-error: true
+
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-container.sarif'
+        continue-on-error: true
+
+  notify:
+    runs-on: ubuntu-latest
+    name: Notify Maintenance Completed
+    needs: [ security-scan, dependency-check, container-scan ]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "🔍 Scheduled checks completed"
+          echo "Security Scan: ${{ needs.security-scan.result }}"
+          echo "Dependency Check: ${{ needs.dependency-check.result }}"
+          echo "Container Scan: ${{ needs.container-scan.result }}"
