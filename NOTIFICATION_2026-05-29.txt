@@ -1,0 +1,68 @@
+═══════════════════════════════════════════════════════════════════════════════
+📢 NOTIFICATION DEVOPS DU JOUR - 29 MAI 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 PROJET : GitHub Actions - Pipeline CI/CD Complet
+
+📝 RÉSUMÉ
+─────────
+Apprenez à créer un pipeline CI/CD complet avec GitHub Actions. Ce projet inclut 
+3 workflows professionnels, des tests multi-version Node (16/18/20), un Docker 
+multi-stage build, et du security scanning automatique. Vous comprendrez les 
+concepts essentiels : jobs parallèles, dépendances, artifacts, secrets, et 
+environments avec approbation.
+
+🛠️ TECHNOLOGIES
+────────────────
+- GitHub Actions (Workflows & Automation)
+- Node.js 16/18/20 (Matrix builds)
+- Jest (Unit tests with coverage)
+- Docker (Multi-stage builds)
+- ESLint + Prettier (Code quality)
+- Trivy (Security scanning)
+- YAML (Configuration as code)
+
+📁 PROJET CRÉÉ
+───────────────
+projects/2026-05-29_github-actions-cicd/
+├── .github/workflows/
+│   ├── ci.yml                    # Lint + Test + Build
+│   ├── deploy.yml                # Déploiement avec approbation
+│   └── scheduled-checks.yml      # Tâches planifiées (cron)
+├── src/
+│   ├── index.js                  # App HTTP simple
+│   └── calculator.js             # Module testé
+├── tests/calculator.test.js       # Tests Jest
+├── Dockerfile                     # Multi-stage build
+└── Configuration (ESLint, Prettier, Jest)
+
+🎓 APPRENTISSAGE EN 1 JOUR
+───────────────────────────
+✅ Linter & Format (30 min)
+✅ Tests multi-version avec Matrix (45 min)
+✅ Docker builds avec caching (45 min)
+✅ Déploiement et smoke tests (30 min)
+✅ Security scanning & Scheduled jobs (30 min)
+✅ Total : 4-6 heures (selon votre rythme)
+
+💡 CONCEPTS CLÉ
+────────────────
+Workflows    → Fichiers YAML = automatisation complète
+Jobs         → Unités d'exécution (parallèles ou séquentiels)
+Artifacts    → Partage de fichiers entre jobs
+Matrix       → Tester sur plusieurs versions simultanément
+Secrets      → Variables chiffrées pour les credentials
+Environments → Approbations avant déploiement
+Cron         → Tâches planifiées (schedule: '0 2 * * 1')
+
+🔗 RESSOURCES
+──────────────
+📖 GitHub Actions Docs : https://docs.github.com/en/actions
+🎯 Actions Marketplace : https://github.com/marketplace
+📚 Workflow Syntax : https://docs.github.com/en/actions/learn-github-actions/workflow-syntax
+
+⏱️ ESTIMATION : 1 journée | NIVEAU : Débutant → Intermédiaire | THÈME : CI/CD
+
+═══════════════════════════════════════════════════════════════════════════════
+Généré : 2026-05-29 | Dépôt : claude-devops-tools | Commit : e938d68
+═══════════════════════════════════════════════════════════════════════════════
