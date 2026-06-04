@@ -1,0 +1,53 @@
+---
+# Web Server Deployment Playbook
+
+- name: Deploy Web Servers
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  roles:
+    - webserver
+  tags:
+    - web
+    - deployment
+
+- name: Verify Web Deployment
+  hosts: webservers
+  gather_facts: no
+  tasks:
+    - name: Check Nginx status
+      systemd:
+        name: nginx
+        state: started
+      changed_when: false
+      tags:
+        - verify
+
+    - name: Test HTTP endpoint
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/"
+        method: GET
+        status_code: 200
+      register: http_response
+      tags:
+        - verify
+
+    - name: Test health endpoint
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/health"
+        method: GET
+        status_code: 200
+      register: health_response
+      tags:
+        - verify
+
+    - name: Display deployment status
+      debug:
+        msg: |
+          Web Server {{ inventory_hostname }} Status:
+          - Service: {{ "Running" if http_response.status == 200 else "Failed" }}
+          - HTTP Response: {{ http_response.status }}
+          - Health Check: {{ "OK" if health_response.status == 200 else "Failed" }}
+          - URL: http://{{ ansible_default_ipv4.address }}
+      tags:
+        - verify

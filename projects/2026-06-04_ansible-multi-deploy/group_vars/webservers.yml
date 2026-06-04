@@ -1,0 +1,35 @@
+---
+# Variables pour les serveurs web
+
+# Nginx configuration
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 768
+
+# Server names
+server_name: "{{ inventory_hostname }}.local"
+
+# Web application
+app_root: /var/www/html
+app_user: www-data
+app_group: www-data
+
+# SSL/TLS
+use_ssl: yes
+ssl_cert_path: /etc/ssl/certs/nginx-selfsigned.crt
+ssl_key_path: /etc/ssl/private/nginx-selfsigned.key
+
+# Performance
+gzip_enabled: yes
+gzip_level: 6
+
+# Caching
+cache_enabled: yes
+cache_max_age: 31536000
+
+# Monitoring
+enable_health_endpoint: yes
+health_check_interval: 30s
+
+# Custom headers
+security_headers: yes

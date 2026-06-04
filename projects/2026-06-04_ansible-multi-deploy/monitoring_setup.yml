@@ -1,0 +1,96 @@
+---
+# Monitoring Setup Playbook - Node Exporter + Prometheus
+
+- name: Setup Monitoring Infrastructure
+  hosts: all
+  become: yes
+  gather_facts: yes
+  roles:
+    - monitoring
+  tags:
+    - monitoring
+    - infrastructure
+
+- name: Verify Monitoring Deployment
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Check Node Exporter status
+      systemd:
+        name: node_exporter
+        state: started
+      changed_when: false
+      tags:
+        - verify
+
+    - name: Test Node Exporter metrics
+      uri:
+        url: "http://localhost:9100/metrics"
+        method: GET
+        status_code: 200
+      register: node_exporter_metrics
+      tags:
+        - verify
+
+    - name: Display Node Exporter status
+      debug:
+        msg: |
+          Node Exporter Metrics:
+          - Endpoint: http://{{ ansible_default_ipv4.address }}:9100/metrics
+          - Status: {{ "OK" if node_exporter_metrics.status == 200 else "Failed" }}
+          - Metrics Count: {{ node_exporter_metrics.content | regex_findall('(?:^[^#].*$)', multiline=True) | length }}
+      tags:
+        - verify
+
+- name: Verify Prometheus (Monitoring Server)
+  hosts: monitoring
+  gather_facts: no
+  tasks:
+    - name: Check Prometheus status
+      systemd:
+        name: prometheus
+        state: started
+      changed_when: false
+      tags:
+        - verify
+
+    - name: Test Prometheus API
+      uri:
+        url: "http://localhost:9090/api/v1/query"
+        method: GET
+        status_code: 200
+      register: prometheus_api
+      tags:
+        - verify
+
+    - name: Display Prometheus status
+      debug:
+        msg: |
+          Prometheus Server Status:
+          - Endpoint: http://{{ ansible_default_ipv4.address }}:9090
+          - Status: {{ "OK" if prometheus_api.status == 200 else "Failed" }}
+          - UI: http://{{ ansible_default_ipv4.address }}:9090/graph
+      tags:
+        - verify
+
+- name: Summary
+  hosts: monitoring
+  gather_facts: no
+  tasks:
+    - name: Display monitoring dashboard URL
+      debug:
+        msg: |
+          ============================================
+          Monitoring Infrastructure Ready!
+          ============================================
+          Dashboard: http://{{ inventory_hostname }}:9090
+          Targets: http://{{ inventory_hostname }}:9090/targets
+          Graph: http://{{ inventory_hostname }}:9090/graph
+
+          Node Exporters:
+          {% for host in groups['all'] %}
+          - {{ host }}: http://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9100/metrics
+          {% endfor %}
+          ============================================
+      tags:
+        - summary

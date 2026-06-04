@@ -1,0 +1,263 @@
+---
+# Monitoring Role - Installation Node Exporter et Prometheus
+
+- name: Create monitoring user
+  user:
+    name: prometheus
+    comment: "Prometheus monitoring user"
+    shell: /bin/false
+    home: /var/lib/prometheus
+    createhome: yes
+    state: present
+  tags:
+    - monitoring
+    - users
+
+- name: Install Node Exporter
+  block:
+    - name: Download Node Exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+        checksum: "sha256:{{ node_exporter_checksum }}"
+      environment:
+        http_proxy: ""
+        https_proxy: ""
+      tags:
+        - monitoring
+        - download
+
+    - name: Extract Node Exporter
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+      tags:
+        - monitoring
+        - extract
+
+    - name: Install Node Exporter binary
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: yes
+      tags:
+        - monitoring
+        - install
+
+    - name: Cleanup
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/node_exporter.tar.gz
+        - "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64"
+      tags:
+        - monitoring
+        - cleanup
+  rescue:
+    - name: Install Node Exporter from package manager
+      apt:
+        name: prometheus-node-exporter
+        state: present
+      when: ansible_os_family == "Debian"
+      tags:
+        - monitoring
+        - install
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart node exporter
+  tags:
+    - monitoring
+    - systemd
+
+- name: Start Node Exporter
+  systemd:
+    name: node_exporter
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags:
+    - monitoring
+    - services
+
+- name: Open Node Exporter port in firewall
+  ufw:
+    rule: allow
+    port: '9100'
+    proto: tcp
+    from_ip: "{{ prometheus_server_ip | default('any') }}"
+  when: ansible_os_family == "Debian"
+  tags:
+    - monitoring
+    - firewall
+
+- name: Install Prometheus (monitoring server only)
+  block:
+    - name: Create Prometheus directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+        - /var/lib/prometheus/snapshots
+      tags:
+        - monitoring
+        - directories
+
+    - name: Download Prometheus
+      get_url:
+        url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+        dest: /tmp/prometheus.tar.gz
+      environment:
+        http_proxy: ""
+        https_proxy: ""
+      tags:
+        - monitoring
+        - download
+
+    - name: Extract Prometheus
+      unarchive:
+        src: /tmp/prometheus.tar.gz
+        dest: /tmp
+        remote_src: yes
+      tags:
+        - monitoring
+        - extract
+
+    - name: Install Prometheus binary
+      copy:
+        src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: yes
+      loop:
+        - prometheus
+        - promtool
+      tags:
+        - monitoring
+        - install
+
+    - name: Copy Prometheus console files
+      copy:
+        src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/consoles"
+        dest: /etc/prometheus/
+        owner: prometheus
+        group: prometheus
+        remote_src: yes
+        directory_mode: yes
+      tags:
+        - monitoring
+        - install
+
+    - name: Copy Prometheus console libraries
+      copy:
+        src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/console_libraries"
+        dest: /etc/prometheus/
+        owner: prometheus
+        group: prometheus
+        remote_src: yes
+        directory_mode: yes
+      tags:
+        - monitoring
+        - install
+
+    - name: Cleanup Prometheus
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/prometheus.tar.gz
+        - "/tmp/prometheus-{{ prometheus_version }}.linux-amd64"
+      tags:
+        - monitoring
+        - cleanup
+
+    - name: Create Prometheus config
+      template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+      notify: restart prometheus
+      tags:
+        - monitoring
+        - config
+
+    - name: Create Prometheus systemd service
+      template:
+        src: prometheus.service.j2
+        dest: /etc/systemd/system/prometheus.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart prometheus
+      tags:
+        - monitoring
+        - systemd
+
+    - name: Start Prometheus
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      tags:
+        - monitoring
+        - services
+
+    - name: Open Prometheus port in firewall
+      ufw:
+        rule: allow
+        port: '9090'
+        proto: tcp
+      when: ansible_os_family == "Debian"
+      tags:
+        - monitoring
+        - firewall
+
+  when: inventory_hostname in groups['monitoring']
+  tags:
+    - monitoring
+    - prometheus
+
+- name: Test Node Exporter endpoint
+  uri:
+    url: "http://localhost:9100/metrics"
+    method: GET
+    status_code: 200
+  changed_when: false
+  register: node_exporter_test
+  tags:
+    - monitoring
+    - test
+
+- name: Print Monitoring Info
+  debug:
+    msg: |
+      ============================================
+      Node Exporter: http://{{ ansible_default_ipv4.address }}:9100/metrics
+      {% if inventory_hostname in groups['monitoring'] %}
+      Prometheus: http://{{ ansible_default_ipv4.address }}:9090
+      Config: /etc/prometheus/prometheus.yml
+      {% endif %}
+      ============================================
+  tags:
+    - monitoring
+    - debug

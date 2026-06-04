@@ -1,0 +1,19 @@
+---
+# Common Handlers - Redémarrages conditionnels
+
+- name: restart ssh
+  systemd:
+    name: ssh
+    state: restarted
+    daemon_reload: yes
+
+- name: restart cron
+  systemd:
+    name: cron
+    state: restarted
+    daemon_reload: yes
+
+- name: reload ssh config
+  systemd:
+    name: ssh
+    state: reloaded

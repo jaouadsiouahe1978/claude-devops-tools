@@ -1,0 +1,70 @@
+---
+# Main Playbook - Déploiement complet sur tous les serveurs
+
+- name: Common Configuration
+  hosts: all
+  become: yes
+  gather_facts: yes
+  roles:
+    - common
+  tags:
+    - common
+    - always
+
+- name: Web Server Setup
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  roles:
+    - webserver
+  tags:
+    - webserver
+    - web
+
+- name: Monitoring Setup
+  hosts: all
+  become: yes
+  gather_facts: yes
+  roles:
+    - monitoring
+  tags:
+    - monitoring
+
+- name: Post-Deployment Summary
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Gather deployment results
+      debug:
+        msg: |
+          ============================================
+          Deployment Summary
+          ============================================
+          Host: {{ inventory_hostname }}
+          IP: {{ ansible_default_ipv4.address }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Role: {{ group_names | join(', ') }}
+          ============================================
+      tags:
+        - summary
+
+    - name: Show webserver endpoints
+      debug:
+        msg: |
+          Web Server Endpoints:
+          - HTTP: http://{{ ansible_default_ipv4.address }}
+          - HTTPS: https://{{ ansible_default_ipv4.address }}
+          - Health: http://{{ ansible_default_ipv4.address }}/health
+      when: inventory_hostname in groups['webservers']
+      tags:
+        - summary
+
+    - name: Show monitoring endpoints
+      debug:
+        msg: |
+          Monitoring Endpoints:
+          - Node Exporter: http://{{ ansible_default_ipv4.address }}:9100/metrics
+          - Prometheus: http://{{ ansible_default_ipv4.address }}:9090
+      when: inventory_hostname in groups['monitoring']
+      tags:
+        - summary

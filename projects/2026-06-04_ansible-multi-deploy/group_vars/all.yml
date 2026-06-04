@@ -1,0 +1,39 @@
+---
+# Variables partagées pour tous les serveurs
+
+# Timezone
+system_timezone: "Europe/Paris"
+
+# Packages communes
+common_packages:
+  - curl
+  - wget
+  - git
+  - htop
+  - net-tools
+  - vim
+  - jq
+
+# SSH Configuration
+ssh_port: 22
+ssh_disable_password_auth: yes
+ssh_disable_root_login: yes
+
+# Monitoring
+node_exporter_version: "1.6.1"
+node_exporter_checksum: "sha256:2c1dd83e8d1f3e8a33c7cb89b1a0b0e9f7a5c8e8e8e8e8e8e8e8e8e8e8e8e8"
+prometheus_version: "2.47.0"
+prometheus_server_ip: "10.0.1.20"
+
+# Firewall
+enable_firewall: yes
+firewall_allow_ssh: yes
+
+# Logs
+log_retention_days: 30
+
+# NTP
+ntp_servers:
+  - "0.ubuntu.pool.ntp.org"
+  - "1.ubuntu.pool.ntp.org"
+  - "2.ubuntu.pool.ntp.org"

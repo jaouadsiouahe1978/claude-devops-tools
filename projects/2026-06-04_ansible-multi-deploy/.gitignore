@@ -1,0 +1,36 @@
+# Ansible
+ansible.log
+.ansible/
+roles/*/.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets
+*.vault
+vault_pass.txt
+.env
+secrets/
+
+# Temporary
+*.tmp
+*.bak
+*.log

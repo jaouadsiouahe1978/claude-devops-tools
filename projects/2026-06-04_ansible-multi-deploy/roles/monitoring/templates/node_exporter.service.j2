@@ -1,0 +1,19 @@
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/node_exporter \
+  --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/) \
+  --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|squashfs|sysfs|tracefs)$$ \
+  --web.listen-address=:9100
+
+SyslogIdentifier=node_exporter
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
