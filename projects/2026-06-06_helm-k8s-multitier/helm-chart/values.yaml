@@ -1,0 +1,131 @@
+# Default values for app-multitier Helm chart
+# This is a YAML-formatted file with template variables
+
+# Global settings
+namespace: app-system
+environment: development
+replicaCount: 2
+
+# Image configuration
+image:
+  registry: docker.io
+  pullPolicy: IfNotPresent
+  tag: "1.0"
+
+# Frontend configuration
+frontend:
+  name: frontend
+  replicaCount: 2
+  image: app-frontend
+  port: 3000
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    ENVIRONMENT: development
+    BACKEND_SERVICE: app-multitier-backend
+
+# Backend configuration
+backend:
+  name: backend
+  replicaCount: 2
+  image: app-backend
+  port: 8000
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    ENVIRONMENT: development
+    DB_HOST: app-multitier-postgres
+    DB_PORT: "5432"
+    DB_NAME: appdb
+    DB_USER: appuser
+  # DB_PASSWORD is stored in Secret
+
+# PostgreSQL configuration
+postgres:
+  name: postgres
+  image: postgres
+  imageTag: "15-alpine"
+  port: 5432
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+  env:
+    POSTGRES_DB: appdb
+    POSTGRES_USER: appuser
+    # POSTGRES_PASSWORD is stored in Secret
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: app.local
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: false
+    secretName: app-multitier-tls
+
+# Health checks
+healthChecks:
+  enabled: true
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+
+# ConfigMap settings
+config:
+  APP_NAME: app-multitier
+  LOG_LEVEL: INFO
+
+# Security
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 1000
+
+# Auto-scaling
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Monitoring (Prometheus)
+monitoring:
+  enabled: false
+  serviceMonitor: false

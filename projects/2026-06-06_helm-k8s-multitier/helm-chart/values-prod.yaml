@@ -1,0 +1,57 @@
+# Production environment overrides
+environment: production
+replicaCount: 3
+
+# High availability for production
+frontend:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+backend:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+postgres:
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  persistence:
+    size: 50Gi
+    storageClass: fast-ssd
+
+# Enable Ingress for prod
+ingress:
+  enabled: true
+  className: nginx
+  host: api.example.com
+  tls:
+    enabled: true
+    secretName: app-multitier-tls
+
+# Auto-scaling enabled
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+
+# Enable monitoring
+monitoring:
+  enabled: true
+  serviceMonitor: true

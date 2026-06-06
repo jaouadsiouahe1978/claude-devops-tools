@@ -1,0 +1,16 @@
+apiVersion: v2
+name: app-multitier
+description: A Helm chart for a multi-tier application (Frontend + Backend + PostgreSQL)
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+keywords:
+  - kubernetes
+  - helm
+  - multi-tier
+  - docker
+  - postgresql
+maintainers:
+  - name: Jaouad
+    email: jaouad@devops.local
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools

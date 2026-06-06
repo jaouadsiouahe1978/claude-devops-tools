@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app-multitier.fullname" . }}-{{ .Values.frontend.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "app-multitier.labels" . }}
+    component: frontend
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+  - port: {{ .Values.frontend.service.port }}
+    targetPort: {{ .Values.frontend.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "app-multitier.selectorLabels" . }}
+    component: frontend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app-multitier.fullname" . }}-{{ .Values.backend.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "app-multitier.labels" . }}
+    component: backend
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+  - port: {{ .Values.backend.service.port }}
+    targetPort: {{ .Values.backend.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "app-multitier.selectorLabels" . }}
+    component: backend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app-multitier.fullname" . }}-{{ .Values.postgres.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "app-multitier.labels" . }}
+    component: postgres
+spec:
+  type: {{ .Values.postgres.service.type }}
+  clusterIP: None
+  ports:
+  - port: {{ .Values.postgres.service.port }}
+    targetPort: {{ .Values.postgres.service.targetPort }}
+    protocol: TCP
+    name: postgresql
+  selector:
+    {{- include "app-multitier.selectorLabels" . }}
+    component: postgres

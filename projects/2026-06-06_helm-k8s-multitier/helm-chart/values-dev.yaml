@@ -1,0 +1,45 @@
+# Development environment overrides
+environment: development
+replicaCount: 1
+
+# Minimal replicas for dev
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+backend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+postgres:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  persistence:
+    size: 5Gi
+
+# Disable some features in dev
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+monitoring:
+  enabled: false

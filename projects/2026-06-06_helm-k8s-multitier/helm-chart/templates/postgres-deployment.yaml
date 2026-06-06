@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "app-multitier.fullname" . }}-{{ .Values.postgres.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "app-multitier.labels" . }}
+    component: postgres
+spec:
+  serviceName: {{ include "app-multitier.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "app-multitier.selectorLabels" . }}
+      component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "app-multitier.selectorLabels" . }}
+        component: postgres
+    spec:
+      containers:
+      - name: {{ .Values.postgres.name }}
+        image: "{{ .Values.postgres.image }}:{{ .Values.postgres.imageTag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: postgresql
+          containerPort: {{ .Values.postgres.port }}
+          protocol: TCP
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "app-multitier.fullname" . }}-config
+              key: DB_NAME
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "app-multitier.fullname" . }}-config
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "app-multitier.fullname" . }}-secrets
+              key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.postgres.env.POSTGRES_USER }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.postgres.env.POSTGRES_USER }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.postgres.resources | nindent 10 }}
+  {{- if .Values.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+      labels:
+        {{- include "app-multitier.labels" . }}
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      {{- if .Values.postgres.persistence.storageClass }}
+      storageClassName: {{ .Values.postgres.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.postgres.persistence.size }}
+  {{- end }}

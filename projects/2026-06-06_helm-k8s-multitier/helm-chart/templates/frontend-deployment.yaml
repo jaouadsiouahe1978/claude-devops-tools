@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "app-multitier.fullname" . }}-{{ .Values.frontend.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "app-multitier.labels" . }}
+    component: frontend
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "app-multitier.selectorLabels" . }}
+      component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "app-multitier.selectorLabels" . }}
+        component: frontend
+    spec:
+      containers:
+      - name: {{ .Values.frontend.name }}
+        image: "{{ .Values.image.registry }}/{{ .Values.frontend.image }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.port }}
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "app-multitier.fullname" . }}-config
+              key: ENVIRONMENT
+        - name: BACKEND_SERVICE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "app-multitier.fullname" . }}-config
+              key: BACKEND_SERVICE
+        - name: PORT
+          value: {{ .Values.frontend.port | quote }}
+        {{- if .Values.healthChecks.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: {{ .Values.healthChecks.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.liveness.timeoutSeconds }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: {{ .Values.healthChecks.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readiness.timeoutSeconds }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
