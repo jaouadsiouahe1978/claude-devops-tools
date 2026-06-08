@@ -1,0 +1,85 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sundays
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  code-scan:
+    runs-on: ubuntu-latest
+    name: Code Security Scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+        continue-on-error: true
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_kwargs: --debug --only-verified
+        continue-on-error: true
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    name: Dependency Vulnerability Check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'flask-app'
+          path: '.'
+          format: 'SARIF'
+          args: >
+            --enable-retired
+        continue-on-error: true
+
+      - name: Upload dependency check results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'dependency-check-report.sarif'
+        continue-on-error: true
+
+  docker-lint:
+    runs-on: ubuntu-latest
+    name: Docker Lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: app/Dockerfile
+          ignore: DL3008,DL3009
+        continue-on-error: true
