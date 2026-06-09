@@ -1,0 +1,12 @@
+---
+# Handlers pour le rôle App
+
+- name: Application déployée
+  debug:
+    msg: "Application {{ app_name }} déployée avec succès"
+  listen: "Application déployée"
+
+- name: Redémarrer l'application
+  docker_container:
+    name: "{{ app_name }}"
+    state: restarted

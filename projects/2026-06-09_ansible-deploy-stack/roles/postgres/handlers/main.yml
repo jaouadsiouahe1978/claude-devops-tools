@@ -1,0 +1,7 @@
+---
+# Handlers pour le rôle PostgreSQL
+
+- name: PostgreSQL démarré
+  debug:
+    msg: "PostgreSQL est maintenant en cours d'exécution"
+  listen: "PostgreSQL démarré"

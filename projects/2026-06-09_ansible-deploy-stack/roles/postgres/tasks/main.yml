@@ -1,0 +1,63 @@
+---
+# Rôle PostgreSQL : Configuration de la base de données
+
+- name: Créer les répertoires de données PostgreSQL
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ postgres_data_volume }}"
+    - "/home/{{ ansible_user }}/postgres_backup"
+
+- name: Copier le docker-compose pour PostgreSQL
+  copy:
+    src: postgres-docker-compose.yml
+    dest: /home/{{ ansible_user }}/docker-compose.postgres.yml
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Démarrer PostgreSQL via Docker
+  docker_container:
+    name: postgres
+    image: "postgres:{{ postgres_version }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ postgres_port }}:5432"
+    env:
+      POSTGRES_USER: "{{ postgres_user }}"
+      POSTGRES_PASSWORD: "{{ postgres_password }}"
+      POSTGRES_DB: "{{ postgres_db }}"
+    volumes:
+      - "{{ postgres_data_volume }}:/var/lib/postgresql/data"
+    networks:
+      - name: "{{ docker_network_name }}"
+  notify: PostgreSQL démarré
+
+- name: Attendre que PostgreSQL soit prêt
+  wait_for:
+    host: localhost
+    port: "{{ postgres_port }}"
+    delay: 10
+    timeout: 60
+
+- name: Copier le script d'initialisation
+  template:
+    src: init-db.sql.j2
+    dest: /tmp/init-db.sql
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Initialiser la base de données
+  shell: |
+    docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -f /tmp/init-db.sql
+  ignore_errors: true
+  register: db_init
+
+- name: Afficher le résultat d'initialisation
+  debug:
+    msg: "{{ db_init.stdout_lines }}"
+  when: db_init.stdout_lines | length > 0

@@ -1,0 +1,8 @@
+---
+# Handlers pour le rôle Nginx
+
+- name: Recharger Nginx
+  docker_container_exec:
+    container: nginx
+    command: nginx -s reload
+  listen: "Recharger Nginx"

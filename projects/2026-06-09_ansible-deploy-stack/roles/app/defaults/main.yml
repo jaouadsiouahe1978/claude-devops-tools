@@ -1,0 +1,7 @@
+# Valeurs par défaut pour l'application
+app_name: "devops-app"
+app_version: "1.0.0"
+app_port: 5000
+app_replicas: 2
+docker_network_name: "app_network"
+postgres_port: 5432

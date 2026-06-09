@@ -1,0 +1,87 @@
+---
+# Playbook principal : Configuration complète de l'infrastructure
+
+- name: Configuration infrastructure complète
+  hosts: all
+  become: yes
+  vars:
+    environment_type: production
+
+  pre_tasks:
+    - name: Afficher les informations des hôtes
+      debug:
+        msg: "Configuration du serveur {{ inventory_hostname }}"
+
+    - name: Mettre à jour les packages système
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+
+  tasks:
+    - name: Installer les outils essentiels
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - htop
+          - net-tools
+        state: present
+
+  post_tasks:
+    - name: Afficher le résumé de la configuration
+      debug:
+        msg: "Configuration terminée pour {{ inventory_hostname }}"
+
+# Configuration des load balancers (Nginx)
+- name: Configurer les load balancers
+  hosts: loadbalancers
+  become: yes
+  roles:
+    - docker
+    - nginx
+  tags:
+    - nginx
+    - loadbalancer
+
+# Configuration des serveurs web
+- name: Configurer les serveurs web
+  hosts: webservers
+  become: yes
+  roles:
+    - docker
+    - app
+  tags:
+    - app
+    - webserver
+
+# Configuration des bases de données
+- name: Configurer les bases de données
+  hosts: databases
+  become: yes
+  roles:
+    - docker
+    - postgres
+  tags:
+    - postgres
+    - database
+
+# Validation et tests
+- name: Tests post-déploiement
+  hosts: all
+  vars:
+    tests_enabled: true
+
+  tasks:
+    - name: Vérifier la connectivité
+      ping:
+
+    - name: Afficher les conteneurs Docker
+      shell: docker ps --format "{{.Names}}: {{.Status}}"
+      register: docker_containers
+      changed_when: false
+
+    - name: Résumé des conteneurs
+      debug:
+        msg: "{{ docker_containers.stdout_lines }}"

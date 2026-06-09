@@ -1,0 +1,16 @@
+# Variables pour le groupe webservers
+nginx_version: "latest"
+nginx_port: 80
+nginx_ssl_port: 443
+
+app_name: "devops-app"
+app_version: "1.0.0"
+app_port: 5000
+app_replicas: 2
+
+# Configuration Docker pour les webservers
+docker_images:
+  - name: "nginx"
+    version: "latest"
+  - name: "python"
+    version: "3.11"

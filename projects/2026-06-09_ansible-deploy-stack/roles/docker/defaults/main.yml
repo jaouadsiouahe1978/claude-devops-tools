@@ -1,0 +1,4 @@
+# Valeurs par défaut pour le rôle Docker
+docker_network_name: "app_network"
+docker_registry: "docker.io"
+docker_compose_version: "2.20.0"

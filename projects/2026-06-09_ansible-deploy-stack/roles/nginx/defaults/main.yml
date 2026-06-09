@@ -1,0 +1,5 @@
+# Valeurs par défaut pour Nginx
+nginx_version: "latest"
+nginx_port: 80
+nginx_ssl_port: 443
+app_backend_port: 5000

@@ -1,0 +1,14 @@
+# Variables pour le groupe databases
+postgres_version: "15"
+postgres_port: 5432
+postgres_user: "appuser"
+postgres_password: "{{ vault_postgres_password }}" # À protéger avec Ansible Vault
+postgres_db: "appdb"
+
+# Volumes et persistence
+postgres_data_volume: "/data/postgres"
+postgres_backup_enabled: true
+postgres_backup_schedule: "0 2 * * *" # Tous les jours à 2h
+
+# Configuration de réplication (si nécessaire)
+postgres_replication_enabled: false

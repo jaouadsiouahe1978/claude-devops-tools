@@ -1,0 +1,39 @@
+---
+# Playbook de redéploiement rapide (idéal pour CI/CD)
+
+- name: Redéploiement rapide de l'application
+  hosts: webservers
+  become: yes
+  vars:
+    deployment_version: "{{ deploy_version | default('latest') }}"
+
+  pre_tasks:
+    - name: Afficher la version de déploiement
+      debug:
+        msg: "Déploiement de la version {{ deployment_version }}"
+
+  roles:
+    - role: app
+      tags: [app, deploy]
+
+  post_tasks:
+    - name: Vérifier le statut des conteneurs
+      shell: docker ps -f name=devops-app --format "{{.Names}} ({{.Status}})"
+      register: app_status
+      changed_when: false
+
+    - name: Afficher le statut
+      debug:
+        msg: "{{ app_status.stdout_lines }}"
+
+    - name: Exécuter les tests de santé
+      uri:
+        url: "http://localhost:5000/health"
+        method: GET
+        status_code: 200
+      retries: 5
+      delay: 5
+
+    - name: Succès du déploiement
+      debug:
+        msg: "✓ Application déployée et en bonne santé"

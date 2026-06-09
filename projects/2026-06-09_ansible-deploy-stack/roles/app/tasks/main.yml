@@ -1,0 +1,68 @@
+---
+# Rôle App : Déploiement de l'application Python
+
+- name: Créer le répertoire de l'application
+  file:
+    path: "/home/{{ ansible_user }}/{{ app_name }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copier les fichiers de l'application
+  copy:
+    src: "{{ item }}"
+    dest: "/home/{{ ansible_user }}/{{ app_name }}/"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  loop:
+    - app.py
+    - requirements.txt
+    - Dockerfile
+
+- name: Copier le docker-compose de l'app
+  template:
+    src: app-docker-compose.yml.j2
+    dest: "/home/{{ ansible_user }}/docker-compose.app.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- name: Construire l'image Docker de l'application
+  docker_image:
+    name: "{{ app_name }}:{{ app_version }}"
+    build:
+      path: "/home/{{ ansible_user }}/{{ app_name }}"
+    source: build
+    state: present
+
+- name: Déployer l'application en conteneur(s)
+  docker_container:
+    name: "{{ app_name }}-{{ item }}"
+    image: "{{ app_name }}:{{ app_version }}"
+    state: started
+    restart_policy: always
+    env:
+      DATABASE_URL: "postgresql://{{ postgres_user }}:{{ postgres_password }}@postgres:{{ postgres_port }}/{{ postgres_db }}"
+      FLASK_ENV: "{{ environment_type }}"
+      APP_PORT: "{{ app_port + item | int }}"
+    expose:
+      - "{{ app_port + item | int }}"
+    networks:
+      - name: "{{ docker_network_name }}"
+  loop: "{{ range(0, app_replicas | int) | list }}"
+  notify: Application déployée
+
+- name: Attendre que l'app soit prête
+  wait_for:
+    host: localhost
+    port: "{{ app_port }}"
+    delay: 5
+    timeout: 60
+
+- name: Tester le health check de l'application
+  uri:
+    url: "http://localhost:{{ app_port }}/health"
+    method: GET
+    status_code: 200
+  retries: 3
+  delay: 5

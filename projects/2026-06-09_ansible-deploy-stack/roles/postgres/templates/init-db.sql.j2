@@ -1,0 +1,35 @@
+-- Initialisation de la base de données
+-- Tables de base pour l'application
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+
+-- Insérer des données de test
+INSERT INTO users (username, email) VALUES
+    ('alice', 'alice@example.com'),
+    ('bob', 'bob@example.com')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tasks (user_id, title, description, status) VALUES
+    (1, 'Task 1', 'Description de la tâche 1', 'pending'),
+    (1, 'Task 2', 'Description de la tâche 2', 'completed'),
+    (2, 'Task 3', 'Description de la tâche 3', 'pending')
+ON CONFLICT DO NOTHING;

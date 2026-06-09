@@ -1,0 +1,49 @@
+---
+# Rôle Nginx : Configuration du reverse proxy
+
+- name: Créer le répertoire de configuration Nginx
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Copier le template de configuration Nginx
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/app.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Recharger Nginx
+
+- name: Copier le docker-compose pour Nginx
+  copy:
+    src: nginx-docker-compose.yml
+    dest: /home/{{ ansible_user }}/docker-compose.nginx.yml
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Démarrer Nginx via Docker
+  docker_container:
+    name: nginx
+    image: "nginx:{{ nginx_version }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ nginx_port }}:80"
+      - "{{ nginx_ssl_port }}:443"
+    volumes:
+      - /etc/nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - name: "{{ docker_network_name }}"
+  notify: Recharger Nginx
+
+- name: Vérifier que Nginx est en cours d'exécution
+  uri:
+    url: "http://localhost:{{ nginx_port }}"
+    status_code: 200,301,302,404
+  retries: 3
+  delay: 5
+  register: nginx_check
+  changed_when: false

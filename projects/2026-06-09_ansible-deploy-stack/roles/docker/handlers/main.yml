@@ -1,0 +1,12 @@
+---
+# Handlers pour le rôle Docker
+
+- name: Redémarrer la session utilisateur
+  meta: noop
+  # Dans un cas réel, cela nécessiterait un redémarrage ou un reconnect
+  listen: "Redémarrer la session utilisateur"
+
+- name: Redémarrer Docker
+  systemd:
+    name: docker
+    state: restarted
