@@ -1,0 +1,40 @@
+# Multi-stage build for Node.js web app
+FROM node:20-alpine as builder
+
+WORKDIR /tmp
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Runtime stage
+FROM node:20-alpine
+
+LABEL maintainer="DevOps Team"
+LABEL description="Node.js web service"
+
+WORKDIR /app
+
+# Set environment variables
+ENV NODE_ENV=production \
+    PORT=3000
+
+# Copy dependencies from builder
+COPY --from=builder /tmp/node_modules ./node_modules
+
+# Create non-root user
+RUN addgroup -g 1000 appgroup && \
+    adduser -u 1000 -G appgroup -h /home/appuser -s /sbin/nologin -D appuser
+
+# Copy application code
+COPY src/ .
+
+# Change ownership
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/health || exit 1
+
+CMD ["node", "app.js"]

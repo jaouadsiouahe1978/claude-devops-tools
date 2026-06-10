@@ -1,0 +1,40 @@
+# Multi-stage build for Flask API
+FROM python:3.11-slim as builder
+
+WORKDIR /tmp
+RUN pip install --user --no-cache-dir flask
+
+# Runtime stage
+FROM python:3.11-slim
+
+LABEL maintainer="DevOps Team"
+LABEL description="Flask API service"
+
+WORKDIR /app
+
+# Copy dependencies from builder
+COPY --from=builder /root/.local /root/.local
+
+# Set environment variables
+ENV PATH=/root/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    FLASK_ENV=production
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+# Copy application code
+COPY src/ .
+
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+
+CMD ["python", "api.py"]
