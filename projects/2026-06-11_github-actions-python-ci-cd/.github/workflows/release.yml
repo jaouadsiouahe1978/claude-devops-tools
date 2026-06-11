@@ -1,0 +1,71 @@
+name: Release Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+
+      - name: Build distribution packages
+        run: python -m build
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION=$(git describe --tags --abbrev=0)
+          PREVIOUS=$(git describe --tags --abbrev=0 --skip=1 2>/dev/null || echo "HEAD")
+
+          CHANGELOG=$(git log $PREVIOUS..$VERSION --oneline --no-decorate || git log $VERSION -1 --oneline --no-decorate)
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            ## Changes
+            ${{ steps.changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-${{ github.ref_name }}
+          path: dist/
+
+  notify-release:
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Send notification
+        run: |
+          echo "✅ Release ${{ github.ref_name }} created successfully"
+          echo "📦 Package is available in dist/ directory"
+          echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"

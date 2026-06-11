@@ -1,0 +1,9 @@
+# Core dependencies
+# (none required for this basic CLI)
+
+# Development & Testing
+pytest>=7.0
+pytest-cov>=3.0
+black>=22.0
+pylint>=2.13
+mypy>=0.950
