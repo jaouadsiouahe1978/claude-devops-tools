@@ -1,0 +1,238 @@
+================================================================================
+PROJECT SUMMARY - 2026-06-12
+================================================================================
+
+📦 PROJECT: Terraform AWS Infrastructure
+🎯 DIFFICULTY: Beginner/Intermediate
+⏱️ DURATION: 1 day
+
+================================================================================
+DESCRIPTION
+================================================================================
+
+Complete Infrastructure as Code (IaC) project to deploy a full AWS infrastructure
+using Terraform. This is a production-ready example with best practices for
+managing multi-environment deployments (dev/staging/prod).
+
+================================================================================
+TECHNOLOGIES & TOOLS
+================================================================================
+
+✓ Terraform 1.0+ (Infrastructure as Code)
+✓ AWS (Elastic Compute Cloud, Relational Database Service, Load Balancing)
+✓ HCL (HashiCorp Configuration Language)
+✓ AWS Security Groups & VPC Networking
+✓ Multi-environment management with tfvars files
+✓ Makefile for automation
+
+================================================================================
+ARCHITECTURE & RESOURCES DEPLOYED
+================================================================================
+
+VPC Networking:
+  - VPC with CIDR 10.0.0.0/16
+  - 2 Public Subnets (for ALB and NAT Gateway)
+  - 2 Private Subnets (for EC2 and RDS)
+  - Internet Gateway for public internet access
+  - 2 NAT Gateways for private subnet egress
+  - Route tables (public + 2 private per AZ)
+
+Security:
+  - 3 Security Groups (ALB, App EC2, RDS PostgreSQL)
+  - Ingress rules by use case
+  - Egress rules allowing all outbound
+
+Compute & Database:
+  - 2 EC2 Instances (t3.micro) in private subnets with Auto Scaling potential
+  - RDS PostgreSQL (Multi-AZ, encrypted, automated backups)
+  - CloudWatch Log Group for RDS PostgreSQL logs
+  - User data script to bootstrap web servers
+
+Load Balancing:
+  - Application Load Balancer (ALB) on public subnets
+  - Target Group with health checks
+  - HTTP routing to EC2 instances
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+
+projects/2026-06-12_terraform-aws-infrastructure/
+├── README.md                      # Main documentation
+├── ADVANCED.md                    # Advanced topics (state, modules, testing)
+├── COMMANDS.md                    # Command reference guide
+├── Makefile                       # Automation targets
+│
+├── provider.tf                    # AWS provider configuration
+├── variables.tf                   # Input variables with validation
+├── outputs.tf                     # Infrastructure outputs
+├── main.tf                        # EC2 instances, RDS, ALB, Target Groups
+├── networking.tf                  # VPC, Subnets, Internet Gateway, NAT
+├── security.tf                    # Security Groups for ALB, App, RDS
+│
+├── terraform.tfvars               # Default variables (DEV)
+├── user_data.sh                   # EC2 bootstrap script
+├── .gitignore                     # Ignore .tfstate, credentials, logs
+│
+└── environments/
+    ├── dev.tfvars                 # Development configuration
+    ├── staging.tfvars             # Staging configuration
+    └── prod.tfvars                # Production configuration
+
+================================================================================
+LEARNING OUTCOMES
+================================================================================
+
+✅ Terraform Fundamentals:
+   - HCL syntax and structure
+   - Resources, variables, outputs, data sources
+   - Implicit and explicit dependencies
+   - Terraform state and state management
+
+✅ AWS VPC Networking:
+   - VPC design with public/private subnets
+   - Internet Gateway and NAT Gateway configuration
+   - Route tables and route propagation
+   - Multi-AZ architecture for high availability
+
+✅ Security Group Management:
+   - Ingress and egress rules
+   - Security group chaining (ALB → EC2 → RDS)
+   - Least privilege principle
+
+✅ AWS Services:
+   - EC2 instances with user data
+   - RDS PostgreSQL (Multi-AZ, backups, encryption)
+   - Application Load Balancer with health checks
+   - CloudWatch logging
+
+✅ Multi-Environment Management:
+   - Using tfvars files for different environments
+   - Variable validation and defaults
+   - Sensitive variable handling
+   - Environment-specific settings
+
+✅ Terraform Best Practices:
+   - Code organization and structure
+   - Resource naming conventions
+   - Documentation and outputs
+   - Gitignoring secrets and state files
+   - Makefile automation
+
+================================================================================
+HOW TO USE
+================================================================================
+
+1. Initialize Terraform:
+   $ cd projects/2026-06-12_terraform-aws-infrastructure
+   $ terraform init
+
+2. Validate configuration:
+   $ terraform validate
+   $ terraform fmt -check -recursive
+
+3. Plan the infrastructure:
+   $ terraform plan -var-file="environments/dev.tfvars"
+
+4. Apply (Deploy):
+   $ terraform apply -var-file="environments/dev.tfvars"
+
+5. View outputs:
+   $ terraform output
+   $ terraform output -raw alb_dns_name
+
+6. Cleanup (Destroy):
+   $ terraform destroy -var-file="environments/dev.tfvars"
+
+Or use the convenient Makefile:
+   $ make plan ENVIRONMENT=dev
+   $ make apply ENVIRONMENT=prod
+   $ make destroy ENVIRONMENT=staging
+
+================================================================================
+KEY FEATURES
+================================================================================
+
+✓ Production-ready infrastructure configuration
+✓ Multi-AZ high availability
+✓ Encrypted RDS storage and encryption in transit
+✓ Automated database backups (1-30 days retention by env)
+✓ Application Load Balancer with health checks
+✓ Security Groups with least privilege ingress
+✓ Three separate environment configurations
+✓ Comprehensive documentation and command reference
+✓ Makefile for common operations
+✓ Terraform validation and formatting
+
+================================================================================
+ADVANCED TOPICS COVERED
+================================================================================
+
+In the ADVANCED.md file:
+- State management (local vs S3 backend)
+- Secrets management (env vars, Secrets Manager)
+- Workspaces for multi-environment
+- Terraform modules for code reuse
+- Testing and validation
+- Dependency management
+- Resource importing
+- Performance optimization
+- Monitoring and audit
+- Disaster recovery and rollback
+- CI/CD integration (GitHub Actions, GitLab CI)
+- Troubleshooting guide
+
+================================================================================
+BONUS EXERCISES
+================================================================================
+
+[ ] Add CloudFront CDN in front of ALB
+[ ] Configure Auto Scaling Groups based on CPU/RAM
+[ ] Switch to RDS Aurora for better performance
+[ ] Setup remote backend with S3 + DynamoDB locks
+[ ] Extract resources into reusable modules
+[ ] Add CloudWatch alarms and SNS notifications
+[ ] Integrate with Terraform Cloud for team collaboration
+[ ] Implement Sentinel policies for governance
+[ ] Add DNS with Route53
+[ ] Implement blue/green deployment strategy
+
+================================================================================
+RESOURCES & REFERENCES
+================================================================================
+
+- Terraform Documentation: https://www.terraform.io/docs/
+- AWS Provider Registry: https://registry.terraform.io/providers/hashicorp/aws/
+- Terraform AWS Modules: https://registry.terraform.io/namespaces/terraform-aws-modules
+- AWS Architecture Center: https://aws.amazon.com/architecture/
+- HashiCorp Learning: https://learn.hashicorp.com/terraform
+
+================================================================================
+GIT COMMIT INFORMATION
+================================================================================
+
+Commit Hash: 7b5cb1f
+Author: DevOps Training
+Date: 2026-06-12
+Message: feat: Add 2026-06-12_terraform-aws-infrastructure - AWS IaC with Terraform
+
+Repository: https://github.com/jaouadsiouahe1978/claude-devops-tools
+Branch: main
+Files Changed: 16 files, 1708 insertions(+)
+
+================================================================================
+NOTES
+================================================================================
+
+- The db_password variable is marked as sensitive to prevent exposure in logs
+- All resources are tagged with Environment, Project, ManagedBy, and CreatedAt
+- AWS credentials must be configured locally (~/.aws/credentials)
+- The infrastructure creates resources that may incur AWS charges
+- Always run 'terraform plan' before 'apply' to review changes
+- For production use, implement remote state backend (S3 + DynamoDB)
+- Never commit terraform.tfstate or secrets to git
+- Use environment variables (TF_VAR_*) or .auto.tfvars for sensitive data
+
+================================================================================
+Created for Jaouad - DevOps/SRE Training at Grenoble
+================================================================================
