@@ -1,0 +1,84 @@
+# Configuration AlertManager
+# Gère le routage, groupage et suppression des alertes
+
+global:
+  resolve_timeout: 5m
+
+# Configuration des templates de notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Définit la route par défaut
+route:
+  # Groupe les alertes par ces labels
+  group_by: ['alertgroup', 'instance']
+  # Attend 30s avant d'envoyer (groupage initial)
+  group_wait: 30s
+  # Regroupe toutes les 5m après le premier envoi
+  group_interval: 5m
+  # Attends avant de resoumettre une alerte non-resolved
+  repeat_interval: 12h
+  # Route par défaut : local reception
+  receiver: 'default'
+
+  # Routes spécifiques
+  routes:
+    # Alertes critiques : immediate
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Alertes warning : groupées
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      group_wait: 1m
+      repeat_interval: 24h
+
+    # Alertes système
+    - match:
+        alertgroup: system
+      receiver: 'system'
+      group_wait: 30s
+
+    # Alertes storage
+    - match:
+        alertgroup: storage
+      receiver: 'storage'
+      group_wait: 20s
+
+# Définit les receivers (où envoyer les alertes)
+receivers:
+  - name: 'default'
+    # À configurer avec un webhook/email/Slack selon les besoins
+
+  - name: 'critical'
+    # Pourrait envoyer email/Slack avec priorité haute
+
+  - name: 'warnings'
+    # Pourrait grouper et envoyer en batch
+
+  - name: 'system'
+    # Alertes système
+
+  - name: 'storage'
+    # Alertes storage
+
+# Inhibition : supprime certaines alertes si d'autres sont présentes
+inhibit_rules:
+  # Si une alerte critique existe, suppress les warnings
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['instance', 'alertgroup']
+
+  # Si un service est DOWN, suppress les alertes de this service
+  - source_match:
+      severity: 'critical'
+      alertname: 'ServiceDown'
+    target_match_re:
+      alertname: '.+'
+    equal: ['instance']

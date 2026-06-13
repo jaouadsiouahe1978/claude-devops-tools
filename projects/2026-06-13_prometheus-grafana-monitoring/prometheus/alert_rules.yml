@@ -1,0 +1,107 @@
+# Règles d'alerte Prometheus
+# Format : Si la condition est vraie pendant la durée 'for', l'alerte déclenche
+
+groups:
+  - name: system_alerts
+    interval: 15s
+    rules:
+      # === ALERTE CPU ===
+      - alert: HighCPUUsage
+        expr: |
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          alertgroup: system
+        annotations:
+          summary: "CPU élevé sur {{ $labels.instance }}"
+          description: "Utilisation CPU > 80% pendant 2 min (valeur: {{ $value | humanizePercentage }})"
+
+      # === ALERTE MÉMOIRE ===
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          alertgroup: system
+        annotations:
+          summary: "Mémoire élevée sur {{ $labels.instance }}"
+          description: "Utilisation RAM > 85% (valeur: {{ $value | humanizePercentage }})"
+
+      # === ALERTE DISQUE ===
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"} / node_filesystem_size_bytes) < 0.1
+        for: 1m
+        labels:
+          severity: critical
+          alertgroup: storage
+        annotations:
+          summary: "Espace disque critique sur {{ $labels.device }}"
+          description: "Moins de 10% d'espace disponible sur {{ $labels.mountpoint }}"
+
+      # === ALERTE INODES ===
+      - alert: HighInodeUsage
+        expr: |
+          (node_filesystem_files_used{fstype=~"ext4|xfs"} / node_filesystem_files) > 0.9
+        for: 1m
+        labels:
+          severity: warning
+          alertgroup: storage
+        annotations:
+          summary: "Inodes critiques sur {{ $labels.device }}"
+          description: "{{ $labels.mountpoint }} : {{ $value | humanizePercentage }} inodes utilisés"
+
+      # === ALERTE TEMPÉRATURE CPU ===
+      - alert: HighCPUTemperature
+        expr: |
+          node_hwmon_temp_celsius > 80
+        for: 5m
+        labels:
+          severity: warning
+          alertgroup: system
+        annotations:
+          summary: "Température CPU élevée"
+          description: "Température: {{ $value }}°C"
+
+  - name: service_alerts
+    interval: 15s
+    rules:
+      # === ALERTE SERVICE DOWN ===
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          alertgroup: service
+        annotations:
+          summary: "Service DOWN: {{ $labels.job }}"
+          description: "{{ $labels.instance }} est DOWN depuis 1 minute"
+
+      # === ALERTE SCRAPE ERRORS ===
+      - alert: ScrapeError
+        expr: |
+          increase(prometheus_tsdb_symbol_table_size_bytes[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          alertgroup: prometheus
+        annotations:
+          summary: "Erreur scrape Prometheus"
+          description: "{{ $labels.job }} a des erreurs de scrape"
+
+  - name: prometheus_alerts
+    interval: 15s
+    rules:
+      # === ALERTE PROMETHEUS STORAGE ===
+      - alert: PrometheusHighMemory
+        expr: |
+          container_memory_usage_bytes{name="prometheus"} / 1024 / 1024 / 1024 > 2
+        for: 5m
+        labels:
+          severity: warning
+          alertgroup: prometheus
+        annotations:
+          summary: "Prometheus utilise beaucoup de RAM"
+          description: "Prometheus > 2GB RAM (valeur: {{ $value | humanize }}GB)"

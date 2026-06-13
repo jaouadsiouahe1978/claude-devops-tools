@@ -1,0 +1,72 @@
+# Recording Rules - Pré-calcul de métriques complexes
+# Les results sont stockées comme nouvelles séries pour accélérer les requêtes
+
+groups:
+  - name: system_metrics
+    interval: 30s
+    rules:
+      # CPU utilization rate
+      - record: 'node:cpu:utilization:rate5m'
+        expr: |
+          100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance))
+
+      # Memory available percentage
+      - record: 'node:memory:available:percent'
+        expr: |
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+
+      # Memory used percentage
+      - record: 'node:memory:used:percent'
+        expr: |
+          ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100
+
+      # Disk usage percentage
+      - record: 'node:disk:used:percent'
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100
+
+      # Load average rate (1min)
+      - record: 'node:load:avg:1m'
+        expr: |
+          node_load1
+
+      # Network bytes in rate
+      - record: 'node:network:in:rate'
+        expr: |
+          rate(node_network_receive_bytes_total[5m])
+
+      # Network bytes out rate
+      - record: 'node:network:out:rate'
+        expr: |
+          rate(node_network_transmit_bytes_total[5m])
+
+  - name: app_metrics
+    interval: 30s
+    rules:
+      # Request latency p95
+      - record: 'app:request:latency:p95'
+        expr: |
+          histogram_quantile(0.95, rate(request_duration_seconds_bucket[5m]))
+
+      # Request latency p99
+      - record: 'app:request:latency:p99'
+        expr: |
+          histogram_quantile(0.99, rate(request_duration_seconds_bucket[5m]))
+
+      # Request error rate
+      - record: 'app:request:error:rate'
+        expr: |
+          rate(requests_total{status=~"5.."}[5m]) / rate(requests_total[5m])
+
+  - name: aggregations
+    interval: 30s
+    rules:
+      # Total instances up
+      - record: 'job:instances:up:total'
+        expr: |
+          count(up == 1) by (job)
+
+      # Total instances down
+      - record: 'job:instances:down:total'
+        expr: |
+          count(up == 0) by (job)

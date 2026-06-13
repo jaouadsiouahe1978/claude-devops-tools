@@ -1,0 +1,68 @@
+# Configuration Prometheus - Collecte de métriques
+
+global:
+  scrape_interval: 15s      # Collecte toutes les 15 secondes
+  evaluation_interval: 15s  # Évalue les règles toutes les 15 secondes
+  external_labels:
+    cluster: 'dev'
+    region: 'grenoble'
+
+# Configuration Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Charge les fichiers de règles
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'
+  - '/etc/prometheus/recording_rules.yml'
+
+# ===== SCRAPE CONFIGS =====
+# Définit où Prometheus va chercher les métriques
+
+scrape_configs:
+  # === PROMETHEUS SELF-MONITORING ===
+  # Prometheus se monitore lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+
+  # === NODE EXPORTER ===
+  # Métriques du système (CPU, RAM, disque, réseau)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance_type: 'system'
+          env: 'dev'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: node_name
+        regex: '([^:]+).*'
+        replacement: '${1}'
+
+  # === ALERTMANAGER ===
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # === APP 1 (httpbin) ===
+  # À titre d'exemple - httpbin expose metrics sur /metrics
+  - job_name: 'app-1'
+    static_configs:
+      - targets: ['app-1:80']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: app_name
+        replacement: 'httpbin-app'
+    scrape_timeout: 5s
+
+  # === DOCKER CONTAINERS ===
+  # Découverte dynamique si vous avez des labels
+  # Nécessite la socket Docker - à décommenter si besoin
+  # - job_name: 'docker'
+  #   static_configs:
+  #     - targets: ['unix:///var/run/docker.sock']
