@@ -1,0 +1,22 @@
+---
+# Base infrastructure setup
+# Install common packages, configure system, harden security
+
+- name: "Base Setup for All Servers"
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - base
+
+  post_tasks:
+    - name: Show system info
+      debug:
+        msg: |
+          System Setup Completed!
+          Hostname: {{ ansible_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          CPU: {{ ansible_processor_vcpus }} cores
+          Memory: {{ (ansible_memtotal_mb / 1024) | int }} GB

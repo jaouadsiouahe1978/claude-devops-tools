@@ -1,0 +1,83 @@
+---
+- name: Install PostgreSQL
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - postgresql
+    - postgresql-contrib
+    - python3-psycopg2
+
+- name: Start and enable PostgreSQL
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+
+- name: Wait for PostgreSQL to be ready
+  wait_for:
+    port: "{{ db_port }}"
+    delay: 2
+    timeout: 30
+
+- name: Create databases
+  postgresql_db:
+    name: "{{ item.name }}"
+    state: present
+  become_user: postgres
+  loop: "{{ databases }}"
+
+- name: Create database users
+  postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    state: present
+  become_user: postgres
+  loop: "{{ db_users }}"
+
+- name: Grant privileges to users
+  postgresql_privs:
+    db: "{{ item.name }}"
+    privs: ALL
+    type: database
+    role: "{{ item.owner }}"
+  become_user: postgres
+  loop: "{{ databases }}"
+
+- name: Create backup directory
+  file:
+    path: "{{ backup_path }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+  when: backup_enabled | default(false)
+
+- name: Create backup script
+  template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/backup-postgresql.sh
+    owner: root
+    group: root
+    mode: '0755'
+  when: backup_enabled | default(false)
+
+- name: Schedule backup via cron
+  cron:
+    name: "PostgreSQL backup"
+    hour: "2"
+    minute: "0"
+    job: "/usr/local/bin/backup-postgresql.sh"
+    user: postgres
+  when: backup_enabled | default(false)
+
+- name: Test PostgreSQL connection
+  postgresql_query:
+    db: postgres
+    query: "SELECT version();"
+  become_user: postgres
+  register: pg_version
+
+- name: Display PostgreSQL version
+  debug:
+    msg: "PostgreSQL is running: {{ pg_version.query_result[0].version | default('Unknown') }}"

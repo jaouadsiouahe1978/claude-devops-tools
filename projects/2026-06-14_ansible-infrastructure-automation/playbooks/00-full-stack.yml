@@ -1,0 +1,69 @@
+---
+# Full infrastructure deployment
+# Apply all roles to build a complete stack
+
+- name: "Full Stack Deployment"
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  pre_tasks:
+    - name: Display deployment info
+      debug:
+        msg: |
+          ========================================
+          Deploying to: {{ inventory_hostname }}
+          Environment: {{ environment }}
+          ========================================
+
+  roles:
+    - base
+
+- name: "Web Server Deployment"
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - webserver
+
+  post_tasks:
+    - name: Verify web service
+      uri:
+        url: "https://localhost:{{ nginx_ssl_port }}"
+        validate_certs: no
+        status_code: 200
+      register: web_check
+      retries: 3
+      delay: 2
+      ignore_errors: yes
+
+- name: "Database Server Deployment"
+  hosts: databases
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - database
+
+- name: "Monitoring Agent Deployment"
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - monitoring
+
+  post_tasks:
+    - name: Final summary
+      debug:
+        msg: |
+          ========================================
+          Deployment completed for {{ inventory_hostname }}
+          Check the services status:
+          - systemctl status nginx (webservers)
+          - systemctl status postgresql (databases)
+          - systemctl status node_exporter (all)
+          ========================================

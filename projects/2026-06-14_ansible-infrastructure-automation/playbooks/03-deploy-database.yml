@@ -1,0 +1,25 @@
+---
+# Database deployment
+# Install and configure PostgreSQL
+
+- name: "Deploy Database Servers"
+  hosts: databases
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - database
+
+  post_tasks:
+    - name: Database deployment summary
+      debug:
+        msg: |
+          ✓ Database Server Deployed!
+          - Engine: {{ db_engine }}
+          - Port: {{ db_port }}
+          - User: {{ db_user }}
+          - Databases created: {{ databases | map(attribute='name') | list | join(', ') }}
+          - Backup enabled: {{ backup_enabled }}
+          {% if backup_enabled %}
+          - Backup path: {{ backup_path }}
+          {% endif %}

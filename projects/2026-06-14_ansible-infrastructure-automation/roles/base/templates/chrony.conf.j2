@@ -1,0 +1,32 @@
+# Chrony NTP Configuration
+# This file is managed by Ansible
+
+# Use default NTP server
+pool {{ ntp_server }} iburst
+
+# This directive specify the location of the file containing ID/key pairs for
+# NTP authentication.
+keyfile /etc/chrony/chrony.keys
+
+# This directive specify the file into which chronyd will store the rate
+# information.
+driftfile /var/lib/chrony/chrony.drift
+
+# Uncomment the following line to turn logging on.
+#log tracking measurements statistics
+log measurements statistics
+
+# Log files location.
+logdir /var/log/chrony
+
+# Stop bad updates from being applied
+makestep 1 3
+
+# Enable kernel synchronization
+rtcsync
+
+# Local stratum
+local stratum 10
+
+# Allow clients to access this NTP server
+#allow 192.168.1.0/24

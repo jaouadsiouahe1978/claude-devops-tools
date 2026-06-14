@@ -1,0 +1,28 @@
+# Variables globales appliquées à tous les serveurs
+---
+environment: production
+deploy_user: deploy
+deploy_group: deploy
+app_home: /opt/app
+log_level: info
+
+# Packages à installer sur tous les serveurs
+system_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - tmux
+  - net-tools
+  - traceroute
+  - telnet
+
+# Configuration système
+ntp_server: pool.ntp.org
+timezone: Europe/Paris
+locale: fr_FR.UTF-8
+
+# Mise à jour automatique
+auto_updates: true
+unattended_upgrades: true

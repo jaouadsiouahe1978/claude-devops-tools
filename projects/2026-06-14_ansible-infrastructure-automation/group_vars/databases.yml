@@ -1,0 +1,24 @@
+# Variables spécifiques au groupe databases
+---
+db_engine: postgresql
+db_port: 5432
+db_user: postgres
+db_password: "SecurePassword123!"  # À remplacer par Ansible Vault en prod
+
+# Databases et users à créer
+databases:
+  - name: appdb
+    owner: appuser
+  - name: testdb
+    owner: testuser
+
+db_users:
+  - name: appuser
+    password: "AppPassword123!"
+  - name: testuser
+    password: "TestPassword123!"
+
+# Backup
+backup_enabled: true
+backup_path: /var/backups/postgresql
+backup_retention_days: 30

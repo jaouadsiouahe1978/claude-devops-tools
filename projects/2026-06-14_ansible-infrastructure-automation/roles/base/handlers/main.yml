@@ -1,0 +1,10 @@
+---
+- name: restart sshd
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: restart chrony
+  systemd:
+    name: chrony
+    state: restarted

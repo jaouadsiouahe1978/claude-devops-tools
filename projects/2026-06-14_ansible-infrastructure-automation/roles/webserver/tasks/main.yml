@@ -1,0 +1,115 @@
+---
+- name: Install Nginx
+  package:
+    name: nginx
+    state: present
+
+- name: Create SSL directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/nginx/ssl
+
+- name: Generate self-signed SSL certificate
+  command: |
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout {{ ssl_key_path }} \
+    -out {{ ssl_cert_path }} \
+    -subj "/C=FR/ST=Auvergne/L=Grenoble/O=DevOps/CN=localhost"
+  args:
+    creates: "{{ ssl_cert_path }}"
+  register: ssl_generated
+
+- name: Configure Nginx
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+    validate: nginx -t -c %s
+  notify: reload nginx
+
+- name: Create app directory
+  file:
+    path: "{{ app_home }}"
+    state: directory
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0755'
+
+- name: Deploy sample HTML app
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>{{ app_name }} - {{ ansible_hostname }}</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              .container { max-width: 800px; margin: 0 auto; }
+              h1 { color: #333; }
+              .info { background: #f0f0f0; padding: 15px; border-radius: 5px; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <h1>Welcome to {{ app_name }}!</h1>
+              <div class="info">
+                  <p><strong>Hostname:</strong> {{ ansible_hostname }}</p>
+                  <p><strong>Version:</strong> {{ app_version }}</p>
+                  <p><strong>Environment:</strong> {{ environment }}</p>
+                  <p><strong>Deployed:</strong> {{ ansible_date_time.iso8601 }}</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    dest: "{{ app_home }}/index.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0644'
+  notify: reload nginx
+
+- name: Configure Nginx virtual host
+  template:
+    src: vhost.conf.j2
+    dest: /etc/nginx/sites-available/{{ app_name }}
+    backup: yes
+  notify: reload nginx
+
+- name: Enable virtual host
+  file:
+    src: /etc/nginx/sites-available/{{ app_name }}
+    dest: /etc/nginx/sites-enabled/{{ app_name }}
+    state: link
+
+- name: Disable default site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+
+- name: Enable and start Nginx
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+
+- name: Wait for Nginx to be ready
+  wait_for:
+    port: "{{ nginx_port }}"
+    delay: 2
+    timeout: 10
+
+- name: Test Nginx response
+  uri:
+    url: "http://localhost:{{ nginx_port }}"
+    status_code: 200
+  register: nginx_test
+  retries: 3
+  delay: 2
+
+- name: Display Nginx test result
+  debug:
+    msg: "Nginx is running and responding correctly"
+  when: nginx_test.status == 200

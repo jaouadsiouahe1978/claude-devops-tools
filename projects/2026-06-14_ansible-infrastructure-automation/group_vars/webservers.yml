@@ -1,0 +1,16 @@
+# Variables spécifiques au groupe webservers
+---
+nginx_port: 80
+nginx_ssl_port: 443
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+
+# Paramètres d'app web
+app_name: myapp
+app_version: 1.0.0
+app_port: 8080
+
+# SSL (auto-signé pour l'exemple)
+ssl_cert_path: /etc/nginx/ssl/cert.pem
+ssl_key_path: /etc/nginx/ssl/key.pem
