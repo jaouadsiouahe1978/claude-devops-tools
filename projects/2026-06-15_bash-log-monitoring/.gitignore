@@ -1,0 +1,38 @@
+# Logs and temporary files
+*.log
+data/alerts.log
+data/monitor.log
+data/reports/
+/tmp/
+
+# Process files
+*.pid
+*.lock
+
+# Archive and cache
+log-archive/
+.alert-cache/
+
+# Credentials and secrets
+*.pem
+*.key
+.env
+.env.local
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Linux
+.directory
+
+# Cron temp files
+/tmp/crontab*.tmp
+/tmp/alert-cache/
