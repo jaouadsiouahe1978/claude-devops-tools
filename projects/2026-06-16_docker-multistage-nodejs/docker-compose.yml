@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Montrer les stats de build
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+
+    container_name: docker-multistage-app
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NODE_ENV: production
+      DOCKER_ENV: "true"
+      PORT: 3000
+      LOG_LEVEL: info
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits (bon pour la prod)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Healthcheck (optionnel si défini dans Dockerfile)
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Network
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
