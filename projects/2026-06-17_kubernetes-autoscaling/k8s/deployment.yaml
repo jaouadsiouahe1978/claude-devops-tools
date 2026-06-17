@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-app
+  namespace: default
+  labels:
+    app: devops-app
+    version: v1
+spec:
+  # Nombre de réplicas initial (sera géré par HPA)
+  replicas: 2
+
+  # Stratégie de mise à jour
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1           # Maximum 1 pod en plus pendant la mise à jour
+      maxUnavailable: 0     # Aucun pod indisponible pendant la mise à jour
+
+  # Sélecteur pour identifier les pods gérés par ce Deployment
+  selector:
+    matchLabels:
+      app: devops-app
+
+  # Template pour les pods
+  template:
+    metadata:
+      labels:
+        app: devops-app
+        version: v1
+      annotations:
+        description: "Autoscaling test application"
+
+    spec:
+      # Stratégie de planification
+      affinity:
+        podAntiAffinity:
+          # Essayer de spread les pods sur différents nœuds
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - devops-app
+                topologyKey: kubernetes.io/hostname
+
+      # Conteneur
+      containers:
+        - name: devops-app
+          image: devops-app:1.0
+          imagePullPolicy: IfNotPresent
+
+          # Ports exposés
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+
+          # Variables d'environnement
+          env:
+            - name: ENVIRONMENT
+              value: "kubernetes"
+            - name: PORT
+              value: "5000"
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          # Probe de liveness (redémarrer le pod s'il ne répond pas)
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Probe de readiness (retirer le pod du service s'il n'est pas prêt)
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+          # Ressources : CRUCIAL pour le HPA !
+          resources:
+            requests:
+              cpu: 100m              # 100 millicores (0.1 CPU)
+              memory: 128Mi          # 128 MB minimum
+
+            limits:
+              cpu: 500m              # 500 millicores (0.5 CPU) maximum
+              memory: 512Mi          # 512 MB maximum
+
+          # Sécurité
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
+          # Volume temporaire pour Flask
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
+
+      # Volumes
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+
+      # Politique de redémarrage
+      restartPolicy: Always
+
+      # Durée maximale du graceful shutdown
+      terminationGracePeriodSeconds: 30
+
+      # Service Account
+      serviceAccountName: default
+
+---
+# Service pour exposer le Deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-app
+  namespace: default
+  labels:
+    app: devops-app
+
+spec:
+  type: ClusterIP
+  selector:
+    app: devops-app
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
+  # Session affinity pour garder un client sur le même pod
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 heures

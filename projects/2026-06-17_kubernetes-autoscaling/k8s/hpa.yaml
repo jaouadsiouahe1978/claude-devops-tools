@@ -1,0 +1,84 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: devops-app-hpa
+  namespace: default
+  labels:
+    app: devops-app
+
+spec:
+  # Cible : le Deployment à scaler
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-app
+
+  # Limites du scaling
+  minReplicas: 2    # Au minimum 2 pods
+  maxReplicas: 10   # Au maximum 10 pods
+
+  # Métriques de scaling
+  metrics:
+    # Basé sur l'utilisation CPU
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Scaler-up si CPU > 70%
+
+    # Basé sur l'utilisation mémoire
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Scaler-up si mémoire > 80%
+
+  # Comportement de scaling
+  behavior:
+    # Scale-up (expansion)
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Pas d'attente pour scale-up
+      policies:
+        - type: Percent
+          value: 100                  # Doubler les pods
+          periodSeconds: 15           # Évaluation chaque 15s
+        - type: Pods
+          value: 4                    # Ajouter max 4 pods
+          periodSeconds: 15
+
+      selectPolicy: Max               # Choisir le changement le plus grand
+
+    # Scale-down (réduction)
+    scaleDown:
+      stabilizationWindowSeconds: 300 # Attendre 5 minutes avant de réduire
+      policies:
+        - type: Percent
+          value: 50                   # Réduire de moitié
+          periodSeconds: 60           # Évaluation chaque minute
+        - type: Pods
+          value: 2                    # Supprimer max 2 pods
+          periodSeconds: 60
+
+      selectPolicy: Min               # Choisir le changement le plus petit
+
+---
+# Alternative : HPA v1 (simple, utilise seulement CPU)
+# À décommenter si votre cluster ne supporte pas autoscaling/v2
+---
+# apiVersion: autoscaling/v1
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: devops-app-hpa
+#   namespace: default
+#
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: devops-app
+#
+#   minReplicas: 2
+#   maxReplicas: 10
+#   targetCPUUtilizationPercentage: 70

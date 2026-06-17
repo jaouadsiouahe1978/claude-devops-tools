@@ -1,0 +1,74 @@
+---
+# Resource Quota - Limiter les ressources globales du namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: devops-quota
+  namespace: default
+spec:
+  hard:
+    requests.cpu: "10"        # 10 CPUs maximum pour tous les pods
+    requests.memory: "10Gi"   # 10 GB de mémoire maximum
+    limits.cpu: "20"          # 20 CPUs maximum de limites
+    limits.memory: "20Gi"     # 20 GB de limites maximum
+    pods: "50"                # 50 pods maximum
+    replicationcontrollers: "10"
+    deployments.apps: "10"
+
+---
+# Network Policy - Isolation réseau (optionnel)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: devops-app-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: devops-app
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules
+  ingress:
+    # Accepter du trafic depuis n'importe quel pod du namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: default
+      ports:
+        - protocol: TCP
+          port: 5000
+
+  # Egress rules
+  egress:
+    # Permettre DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+
+    # Permettre l'accès à Internet pour les mises à jour
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+
+---
+# Pod Disruption Budget - Garantir une disponibilité minimale
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: devops-app-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: devops-app
