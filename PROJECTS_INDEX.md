@@ -140,3 +140,54 @@ terraform apply       # Exemple pour Terraform
 **Maintenu par:** Jaouad (Étudiant DevOps/SRE à Grenoble)
 **Dernière mise à jour:** 2026-06-16
 
+
+---
+
+## 📦 2026-06-17 : Kubernetes Autoscaling (HPA)
+
+**Thème** : Kubernetes - Autoscaling  
+**Niveau** : Intermédiaire  
+**Durée** : 1 journée (30 min - 2h)  
+**Technos** : Kubernetes, kubectl, metrics-server, Flask, Docker
+
+### 📌 Objectif
+Apprendre à déployer une application multi-répliques sur Kubernetes avec Horizontal Pod Autoscaler (HPA) pour adapter automatiquement le nombre de pods en fonction de la charge CPU/mémoire.
+
+### 📂 Contenu
+- Application Flask CPU-intensive pour tester l'autoscaling
+- Manifests Kubernetes complets (Deployment, HPA, Resource Quota)
+- metrics-server pour la collecte de métriques
+- 3 scripts d'automatisation (setup, test-load, monitor)
+- Documentation complète (README, QUICKSTART, TROUBLESHOOTING)
+- Support docker-compose pour développement local
+
+### 🎓 Apprentissage
+✅ Deployments multi-répliques  
+✅ Resource Requests/Limits  
+✅ Horizontal Pod Autoscaler  
+✅ Monitoring avec metrics-server  
+✅ Scaling automatique en action  
+✅ Troubleshooting et best practices  
+
+### 🚀 Quick Start
+```bash
+# Kubernetes
+cd docker && docker build -t devops-app:1.0 .
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/hpa.yaml
+./scripts/test-load.sh 5 10
+
+# Ou docker-compose
+docker-compose up -d
+curl http://localhost/cpu-intensive
+```
+
+### 📊 Fichiers
+- 14 fichiers au total
+- ~1,800 lignes de code
+- ~800 lignes de documentation
+- 3 scripts d'automatisation
+- 3 manifests Kubernetes
+- 1 application Flask
+
+---
