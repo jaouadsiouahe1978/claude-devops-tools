@@ -191,3 +191,62 @@ curl http://localhost/cpu-intensive
 - 1 application Flask
 
 ---
+
+## 📅 2026-06-19 - Ansible Web Stack Deployment
+
+**Repository**: [claude-devops-tools](https://github.com/jaouadsiouahe1978/claude-devops-tools)  
+**Folder**: `projects/2026-06-19_ansible-web-stack/`  
+**Level**: Intermediate  
+**Duration**: 1 day
+
+### 🎯 Objective
+Master **Ansible Configuration Management** by deploying a complete multi-server web stack with monitoring.
+
+### 🏗️ Architecture
+- **Nginx** (reverse proxy)
+- **Node.js + Express** (backend)
+- **PostgreSQL** (database)
+- **Prometheus + Node Exporter** (monitoring)
+
+### 📦 What's Included
+✓ 6 reusable Ansible roles (common, nginx, nodejs, postgres, prometheus, monitoring)
+✓ Multi-host inventory with groups (webservers, dbservers, monitoring)
+✓ Dynamic variables (group_vars/, host_vars/)
+✓ Jinja2 templates for configuration
+✓ Docker Compose for local testing
+✓ Scripts for automation (setup, ping, test)
+✓ Complete documentation (README + QUICKSTART)
+
+### 🚀 3 Deployment Options
+1. **Docker Compose** - Local testing (5 min setup)
+2. **Linux Servers** - Production deployment
+3. **Vagrant** - VM-based testing
+
+### 💡 Key Concepts
+- Playbooks and idempotent tasks
+- Roles and handlers
+- Variables and Jinja2 templates
+- Multi-server orchestration
+- Service management (systemd)
+- Firewall configuration (UFW)
+- Monitoring integration
+
+### 📊 Project Stats
+- **34 files** | **2,329 lines** of config/code
+- **6 roles** × **3 servers** = Production stack
+- **100% YAML** (easy to understand and modify)
+
+### 🎓 Learning Outcomes
+- Ansible architecture and workflow
+- Configuration Management best practices
+- Infrastructure as Code (IaC)
+- Multi-server deployment
+- Monitoring and observability
+
+### 📚 Resources
+- [Ansible Documentation](https://docs.ansible.com/)
+- [Playbook Guide](https://docs.ansible.com/ansible/latest/user_guide/playbooks.html)
+- [Role Best Practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_reuse_roles.html)
+
+---
+
