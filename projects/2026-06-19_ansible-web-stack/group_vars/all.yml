@@ -1,0 +1,25 @@
+---
+# Variables communes à tous les hôtes
+
+# System
+devops_user: devops
+
+# Localization
+timezone: UTC
+locale: en_US.UTF-8
+
+# Base packages
+base_packages:
+  - curl
+  - wget
+  - git
+  - htop
+  - vim
+  - net-tools
+  - traceroute
+  - dnsutils
+  - telnet
+
+# Firewall
+firewall_enabled: true
+ssh_port: 22

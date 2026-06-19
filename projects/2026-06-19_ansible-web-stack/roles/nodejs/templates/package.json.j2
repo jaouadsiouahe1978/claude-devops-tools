@@ -1,0 +1,29 @@
+{
+  "name": "devops-stack-app",
+  "version": "1.0.0",
+  "description": "Demo application for DevOps training - Ansible",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ansible",
+    "devops",
+    "nodejs",
+    "express"
+  ],
+  "author": "Jaouad - DevOps Training",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": "{{ nodejs_version }}",
+    "npm": ">=9.0.0"
+  }
+}

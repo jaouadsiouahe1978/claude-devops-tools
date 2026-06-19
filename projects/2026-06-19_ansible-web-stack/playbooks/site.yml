@@ -1,0 +1,39 @@
+---
+# Main playbook - déploie la stack complète
+# Usage: ansible-playbook playbooks/site.yml -i inventory/hosts.ini
+
+- name: "Deploy common configuration to all hosts"
+  hosts: all
+  roles:
+    - common
+  tags:
+    - common
+    - always
+
+- name: "Deploy web servers (Nginx + Node.js)"
+  hosts: webservers
+  roles:
+    - nginx
+    - nodejs
+    - monitoring
+  tags:
+    - webservers
+    - nginx
+    - nodejs
+
+- name: "Deploy database server (PostgreSQL)"
+  hosts: dbservers
+  roles:
+    - postgres
+    - monitoring
+  tags:
+    - dbservers
+    - postgres
+
+- name: "Deploy monitoring stack (Prometheus)"
+  hosts: monitoring
+  roles:
+    - prometheus
+  tags:
+    - monitoring
+    - prometheus

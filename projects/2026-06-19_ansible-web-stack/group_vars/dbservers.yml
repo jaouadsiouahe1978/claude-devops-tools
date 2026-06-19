@@ -1,0 +1,12 @@
+---
+# Variables spécifiques aux serveurs PostgreSQL
+
+# PostgreSQL
+postgres_port: 5432
+postgres_version: "15"
+postgres_user: app_user
+postgres_password: app_password_secure_123
+postgres_db: app_db
+
+# Monitoring
+node_exporter_port: 9100

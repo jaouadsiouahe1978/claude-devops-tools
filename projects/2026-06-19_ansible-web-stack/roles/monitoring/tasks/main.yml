@@ -1,0 +1,95 @@
+---
+- name: "Create prometheus user"
+  user:
+    name: prometheus
+    shell: /usr/sbin/nologin
+    createhome: no
+  become: yes
+  tags:
+    - monitoring
+    - prometheus
+
+- name: "Download Node Exporter"
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz"
+    dest: /tmp/node_exporter.tar.gz
+    checksum: "sha256:9764ee786a96e03e77cb0f46c07e6c4ee55b0b7c8f35107cfc88cc88de46f5d9"
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "Extract Node Exporter"
+  unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /tmp
+    remote_src: yes
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "Copy Node Exporter binary"
+  copy:
+    src: /tmp/node_exporter-1.6.1.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  become: yes
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "Create Node Exporter systemd service"
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: "reload systemd"
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "Enable and start Node Exporter"
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "UFW allow Node Exporter"
+  ufw:
+    rule: allow
+    port: "9100"
+    proto: tcp
+  become: yes
+  tags:
+    - monitoring
+    - firewall
+
+- name: "Wait for Node Exporter to be ready"
+  wait_for:
+    port: 9100
+    delay: 1
+    timeout: 30
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: "Clean up downloaded files"
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/node_exporter.tar.gz
+    - /tmp/node_exporter-1.6.1.linux-amd64
+  tags:
+    - monitoring
+    - cleanup

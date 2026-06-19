@@ -1,0 +1,136 @@
+---
+- name: "Update apt cache and upgrade system"
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    upgrade: dist
+  become: yes
+  tags:
+    - packages
+
+- name: "Install base packages"
+  apt:
+    name: "{{ base_packages }}"
+    state: present
+  become: yes
+  vars:
+    base_packages:
+      - curl
+      - wget
+      - git
+      - htop
+      - vim
+      - net-tools
+      - traceroute
+      - dnsutils
+      - telnet
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - ufw
+      - openssh-server
+      - openssh-client
+  tags:
+    - packages
+
+- name: "Enable UFW firewall"
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  become: yes
+  tags:
+    - firewall
+
+- name: "UFW allow SSH"
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  become: yes
+  tags:
+    - firewall
+
+- name: "UFW allow HTTP"
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+  become: yes
+  tags:
+    - firewall
+
+- name: "UFW allow HTTPS"
+  ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+  become: yes
+  tags:
+    - firewall
+
+- name: "Set hostname"
+  hostname:
+    name: "{{ inventory_hostname }}"
+  become: yes
+  tags:
+    - hostname
+
+- name: "Configure timezone to UTC"
+  timezone:
+    name: UTC
+  become: yes
+  tags:
+    - timezone
+
+- name: "Configure sysctl for production"
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop:
+    - name: net.ipv4.ip_forward
+      value: 1
+    - name: net.ipv4.conf.all.forwarding
+      value: 1
+    - name: net.ipv4.tcp_fin_timeout
+      value: 30
+    - name: net.ipv4.tcp_keepalive_time
+      value: 600
+    - name: net.core.somaxconn
+      value: 65535
+  become: yes
+  tags:
+    - sysctl
+
+- name: "Create devops user"
+  user:
+    name: "{{ devops_user }}"
+    shell: /bin/bash
+    createhome: yes
+    groups: sudo
+  become: yes
+  tags:
+    - users
+
+- name: "Configure sudo without password"
+  lineinfile:
+    path: /etc/sudoers
+    line: "{{ devops_user }} ALL=(ALL) NOPASSWD:ALL"
+    validate: "visudo -cf %s"
+  become: yes
+  tags:
+    - sudo
+
+- name: "Add authorized_keys for devops user"
+  authorized_key:
+    user: "{{ devops_user }}"
+    state: present
+    key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_rsa.pub') }}"
+  become: yes
+  ignore_errors: yes
+  tags:
+    - ssh

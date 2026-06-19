@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # Ubuntu container to simulate web server 1
+  web1:
+    image: ubuntu:22.04
+    container_name: devops-web1
+    hostname: web1.example.com
+    networks:
+      devops-net:
+        ipv4_address: 192.168.1.100
+    ports:
+      - "8001:80"
+      - "3001:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SSH_ENABLED=true
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y openssh-server sudo &&
+        mkdir -p /run/sshd &&
+        useradd -m -s /bin/bash devops &&
+        echo 'devops:devops' | chpasswd &&
+        echo 'devops ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+        /usr/sbin/sshd -D
+      "
+    healthcheck:
+      test: ["CMD", "ssh-keyscan", "-H", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ubuntu container to simulate web server 2
+  web2:
+    image: ubuntu:22.04
+    container_name: devops-web2
+    hostname: web2.example.com
+    networks:
+      devops-net:
+        ipv4_address: 192.168.1.101
+    ports:
+      - "8002:80"
+      - "3002:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SSH_ENABLED=true
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y openssh-server sudo &&
+        mkdir -p /run/sshd &&
+        useradd -m -s /bin/bash devops &&
+        echo 'devops:devops' | chpasswd &&
+        echo 'devops ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+        /usr/sbin/sshd -D
+      "
+    healthcheck:
+      test: ["CMD", "ssh-keyscan", "-H", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL database
+  db1:
+    image: postgres:15-alpine
+    container_name: devops-db1
+    hostname: db1.example.com
+    networks:
+      devops-net:
+        ipv4_address: 192.168.1.200
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Monitoring server
+  monitoring:
+    image: ubuntu:22.04
+    container_name: devops-monitoring
+    hostname: mon1.example.com
+    networks:
+      devops-net:
+        ipv4_address: 192.168.1.150
+    ports:
+      - "9090:9090"  # Prometheus
+      - "3000:3000"  # Grafana
+      - "9093:9093"  # Alertmanager
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y openssh-server sudo &&
+        mkdir -p /run/sshd &&
+        useradd -m -s /bin/bash devops &&
+        echo 'devops:devops' | chpasswd &&
+        echo 'devops ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+        /usr/sbin/sshd -D
+      "
+    healthcheck:
+      test: ["CMD", "ssh-keyscan", "-H", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx load balancer (for local testing)
+  nginx:
+    image: nginx:alpine
+    container_name: devops-nginx-lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - devops-net
+    depends_on:
+      - web1
+      - web2
+
+networks:
+  devops-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+
+volumes:
+  db_data:
+    driver: local

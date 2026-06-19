@@ -1,0 +1,15 @@
+---
+# Variables spécifiques au serveur de monitoring
+
+# Prometheus
+prometheus_port: 9090
+prometheus_user: prometheus
+prometheus_group: prometheus
+
+# Alertmanager
+alertmanager_port: 9093
+
+# Grafana
+grafana_port: 3000
+grafana_admin_user: admin
+grafana_admin_password: admin123

@@ -1,0 +1,15 @@
+---
+# Variables spécifiques aux webservers
+
+# Nginx
+nginx_port: 80
+nginx_user: www-data
+
+# Node.js
+nodejs_version: "18.18.2"
+nodejs_user: app
+nodejs_port: 3000
+app_dir: /opt/app
+
+# Monitoring
+node_exporter_port: 9100

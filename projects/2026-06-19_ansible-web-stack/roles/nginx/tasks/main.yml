@@ -1,0 +1,75 @@
+---
+- name: "Install Nginx"
+  apt:
+    name: nginx
+    state: present
+  become: yes
+  tags:
+    - nginx
+    - packages
+
+- name: "Create Nginx config directory"
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags:
+    - nginx
+
+- name: "Configure Nginx reverse proxy"
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: yes
+  notify: "restart nginx"
+  tags:
+    - nginx
+    - config
+
+- name: "Enable Nginx site"
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+    force: yes
+  become: yes
+  notify: "restart nginx"
+  tags:
+    - nginx
+
+- name: "Test Nginx configuration"
+  command: nginx -t
+  become: yes
+  register: nginx_test
+  changed_when: False
+  tags:
+    - nginx
+    - test
+
+- name: "Start and enable Nginx"
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+  tags:
+    - nginx
+    - service
+
+- name: "UFW allow HTTP"
+  ufw:
+    rule: allow
+    port: "{{ nginx_port }}"
+    proto: tcp
+  become: yes
+  tags:
+    - nginx
+    - firewall

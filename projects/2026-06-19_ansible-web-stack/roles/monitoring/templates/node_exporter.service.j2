@@ -1,0 +1,24 @@
+[Unit]
+Description=Node Exporter
+Documentation=https://github.com/prometheus/node_exporter
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/node_exporter \
+  --collector.filesystem.fs-types-exclude=^(sys|proc|auto)fs \
+  --collector.netdev.device-exclude=^(veth.*)$ \
+  --web.telemetry-path=/metrics
+
+Restart=on-failure
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

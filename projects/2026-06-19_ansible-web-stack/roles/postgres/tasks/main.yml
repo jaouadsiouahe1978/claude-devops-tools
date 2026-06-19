@@ -1,0 +1,102 @@
+---
+- name: "Install PostgreSQL"
+  apt:
+    name: "{{ postgres_packages }}"
+    state: present
+  become: yes
+  vars:
+    postgres_packages:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+  tags:
+    - postgres
+    - packages
+
+- name: "Ensure PostgreSQL is started and enabled"
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - postgres
+    - service
+
+- name: "Create PostgreSQL user"
+  postgresql_user:
+    name: "{{ postgres_user }}"
+    password: "{{ postgres_password }}"
+    encrypted: yes
+  become: yes
+  become_user: postgres
+  tags:
+    - postgres
+    - users
+
+- name: "Create PostgreSQL database"
+  postgresql_db:
+    name: "{{ postgres_db }}"
+    owner: "{{ postgres_user }}"
+    encoding: UTF-8
+    lc_collate: C.UTF-8
+    lc_ctype: C.UTF-8
+  become: yes
+  become_user: postgres
+  tags:
+    - postgres
+    - database
+
+- name: "Grant privileges to user"
+  postgresql_privs:
+    db: "{{ postgres_db }}"
+    privs: ALL
+    type: database
+    role: "{{ postgres_user }}"
+  become: yes
+  become_user: postgres
+  tags:
+    - postgres
+    - database
+
+- name: "Configure PostgreSQL to accept connections"
+  lineinfile:
+    path: /etc/postgresql/*/main/postgresql.conf
+    regexp: "^#listen_addresses ="
+    line: "listen_addresses = '*'"
+  become: yes
+  notify: "restart postgres"
+  tags:
+    - postgres
+    - config
+
+- name: "Configure PostgreSQL pg_hba.conf"
+  lineinfile:
+    path: /etc/postgresql/*/main/pg_hba.conf
+    line: "host    all             all             0.0.0.0/0               md5"
+    insertbefore: "^# TYPE  DATABASE        USER            ADDRESS"
+  become: yes
+  notify: "restart postgres"
+  tags:
+    - postgres
+    - config
+
+- name: "UFW allow PostgreSQL"
+  ufw:
+    rule: allow
+    port: "5432"
+    proto: tcp
+  become: yes
+  tags:
+    - postgres
+    - firewall
+
+- name: "Wait for PostgreSQL to be ready"
+  wait_for:
+    host: localhost
+    port: 5432
+    delay: 1
+    timeout: 30
+  tags:
+    - postgres
+    - service

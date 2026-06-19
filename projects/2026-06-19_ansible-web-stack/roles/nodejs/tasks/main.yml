@@ -1,0 +1,187 @@
+---
+- name: "Install Node.js dependencies"
+  apt:
+    name:
+      - curl
+      - build-essential
+      - libssl-dev
+    state: present
+  become: yes
+  tags:
+    - nodejs
+    - packages
+
+- name: "Create app user"
+  user:
+    name: "{{ nodejs_user }}"
+    shell: /bin/bash
+    createhome: yes
+  become: yes
+  tags:
+    - nodejs
+    - users
+
+- name: "Install NVM (Node Version Manager)"
+  shell: |
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    source ~/.bashrc
+    nvm install {{ nodejs_version }}
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ nodejs_user }}"
+  creates: /home/{{ nodejs_user }}/.nvm/versions
+  tags:
+    - nodejs
+
+- name: "Set default Node version"
+  shell: |
+    source ~/.bashrc
+    nvm alias default {{ nodejs_version }}
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ nodejs_user }}"
+  tags:
+    - nodejs
+
+- name: "Install PM2 globally"
+  shell: |
+    source ~/.bashrc
+    npm install -g pm2
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ nodejs_user }}"
+  tags:
+    - nodejs
+
+- name: "Create app directory"
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_user }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - nodejs
+
+- name: "Copy application file"
+  copy:
+    src: app.js
+    dest: "{{ app_dir }}/app.js"
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_user }}"
+    mode: '0644'
+  become: yes
+  tags:
+    - nodejs
+    - app
+
+- name: "Create package.json"
+  template:
+    src: package.json.j2
+    dest: "{{ app_dir }}/package.json"
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_user }}"
+    mode: '0644'
+  become: yes
+  tags:
+    - nodejs
+    - app
+
+- name: "Install npm dependencies"
+  shell: |
+    source ~/.bashrc
+    cd {{ app_dir }}
+    npm install
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ nodejs_user }}"
+  tags:
+    - nodejs
+
+- name: "Create .env file"
+  template:
+    src: .env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_user }}"
+    mode: '0600'
+  become: yes
+  tags:
+    - nodejs
+    - config
+
+- name: "Create PM2 ecosystem.config.js"
+  template:
+    src: ecosystem.config.js.j2
+    dest: "{{ app_dir }}/ecosystem.config.js"
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_user }}"
+    mode: '0644'
+  become: yes
+  tags:
+    - nodejs
+
+- name: "Start application with PM2"
+  shell: |
+    source ~/.bashrc
+    cd {{ app_dir }}
+    pm2 start ecosystem.config.js
+    pm2 save
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ nodejs_user }}"
+  environment:
+    HOME: "/home/{{ nodejs_user }}"
+  tags:
+    - nodejs
+    - service
+
+- name: "Setup PM2 to start on boot"
+  shell: |
+    source ~/.bashrc
+    pm2 startup systemd -u {{ nodejs_user }} --hp /home/{{ nodejs_user }}
+  args:
+    executable: /bin/bash
+  become: yes
+  tags:
+    - nodejs
+    - service
+
+- name: "Create systemd service for Node.js app"
+  template:
+    src: nodejs.service.j2
+    dest: /etc/systemd/system/nodejs-app.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: "reload systemd"
+  tags:
+    - nodejs
+    - service
+
+- name: "Enable and start Node.js service"
+  systemd:
+    name: nodejs-app
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+  tags:
+    - nodejs
+    - service
+
+- name: "Wait for Node.js to be ready"
+  wait_for:
+    port: "{{ nodejs_port }}"
+    delay: 2
+    timeout: 30
+  tags:
+    - nodejs
+    - service
