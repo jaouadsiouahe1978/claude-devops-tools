@@ -1,0 +1,53 @@
+# Docker volumes
+harbor_data/
+postgres_data/
+redis_data/
+registry_data/
+trivy_cache/
+minio_data/
+harbor_cache/
+harbor_job_data/
+
+# Reports
+*.json
+*.sarif
+*.xml
+*.txt
+*.log
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+
+# Go
+*.o
+*.a
+
+# Trivy offline DB
+trivy-cache/

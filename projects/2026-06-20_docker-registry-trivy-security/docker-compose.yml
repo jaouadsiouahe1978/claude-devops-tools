@@ -1,0 +1,210 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Database pour Harbor
+  postgres:
+    image: postgres:15-alpine
+    container_name: harbor-postgres
+    environment:
+      POSTGRES_DB: registry
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Harbor12345
+      POSTGRES_INITDB_ARGS: "-c max_connections=200"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - harbor-net
+    restart: unless-stopped
+
+  # Redis - Cache pour Harbor
+  redis:
+    image: redis:7-alpine
+    container_name: harbor-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - harbor-net
+    restart: unless-stopped
+
+  # Harbor - Docker Registry
+  harbor-core:
+    image: goharbor/harbor-core:v2.9.1
+    container_name: harbor-core
+    environment:
+      POSTGRES_URL: postgresql://postgres:Harbor12345@postgres:5432/registry
+      REDIS_URL: redis://redis:6379/0
+      CORE_URL: http://harbor-core:8080
+      REGISTRY_URL: http://registry:5000
+      REGISTRY_CONTROLLER_URL: http://registry-controller:8080
+      HARBOR_ADMIN_PASSWORD: Harbor12345
+      JOBSERVICE_URL: http://harbor-jobservice:8080
+      CLAIR_URL: http://clair:6061
+      NOTARY_URL: http://notary-server:4443
+      LOG_LEVEL: info
+      CONFIG_PATH: /etc/harbor
+      CHART_REPOSITORY_URL: http://chartmuseum:9999
+      # Security
+      CORE_SECRET: not-a-secret-in-dev
+      JOBSERVICE_SECRET: not-a-secret-in-dev
+      REGISTRY_STORAGE_PROVIDER_NAME: filesystem
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./harbor/harbor.yml:/etc/harbor/harbor.yml:ro
+      - harbor_data:/data
+      - harbor_cache:/var/cache/harbor
+    networks:
+      - harbor-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v2.0/systeminfo"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Harbor Registry (Docker Distribution)
+  registry:
+    image: goharbor/registry-photon:v2.9.1
+    container_name: harbor-registry
+    environment:
+      REGISTRY_HTTP_ADDR: :5000
+      REGISTRY_HTTP_SECRET: not-a-secret-in-dev
+      REGISTRY_STORAGE: filesystem
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - harbor-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Harbor Job Service (async tasks)
+  harbor-jobservice:
+    image: goharbor/harbor-jobservice:v2.9.1
+    container_name: harbor-jobservice
+    environment:
+      POSTGRES_URL: postgresql://postgres:Harbor12345@postgres:5432/registry
+      REDIS_URL: redis://redis:6379/1
+      CORE_URL: http://harbor-core:8080
+      JOBSERVICE_SECRET: not-a-secret-in-dev
+      LOG_LEVEL: info
+    ports:
+      - "8087:8080"
+    depends_on:
+      - postgres
+      - redis
+      - harbor-core
+    volumes:
+      - ./harbor/harbor.yml:/etc/harbor/harbor.yml:ro
+      - harbor_job_data:/var/log/jobs
+    networks:
+      - harbor-net
+    restart: unless-stopped
+
+  # Harbor Registryctl (registry control plane)
+  registry-controller:
+    image: goharbor/harbor-registryctl:v2.9.1
+    container_name: harbor-registryctl
+    environment:
+      CORE_URL: http://harbor-core:8080
+      JOBSERVICE_URL: http://harbor-jobservice:8080
+      REGISTRY_HTTP_RELATIVEURLS: "on"
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    ports:
+      - "8088:8080"
+    depends_on:
+      - harbor-core
+    volumes:
+      - ./harbor/harbor.yml:/etc/harbor/harbor.yml:ro
+    networks:
+      - harbor-net
+    restart: unless-stopped
+
+  # Trivy Server - Container Image Scanner
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: trivy-server
+    command: server --listen 0.0.0.0:8081 --debug
+    ports:
+      - "8081:8081"
+    environment:
+      DEBUG: "false"
+      TRIVY_OFFLINE_SCAN: "false"
+      TRIVY_SKIP_DB_UPDATE: "false"
+      TRIVY_SKIP_JAVA_DB_UPDATE: "false"
+    volumes:
+      - trivy_cache:/root/.cache/trivy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - harbor-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "trivy", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Minio S3 (optionnel, pour storage distribué)
+  minio:
+    image: minio/minio:latest
+    container_name: harbor-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - harbor-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  harbor-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  harbor_data:
+  harbor_cache:
+  harbor_job_data:
+  registry_data:
+  trivy_cache:
+  minio_data:

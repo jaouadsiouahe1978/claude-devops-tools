@@ -1,0 +1,40 @@
+# Vulnerable Node.js Dockerfile - FOR DEMO ONLY
+# This demonstrates common security issues that Trivy will catch
+
+FROM ubuntu:20.04
+
+# Running as root
+# Missing WORKDIR creates security risks
+
+# Install Node.js with unnecessary packages
+RUN apt-get update && \
+    apt-get install -y \
+      nodejs \
+      npm \
+      curl \
+      wget \
+      git \
+      vim \
+      nano \
+      build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install outdated dependencies with known vulnerabilities
+COPY package.json .
+RUN npm install
+
+# Copy application
+COPY . /app
+
+# Running as root (security risk)
+WORKDIR /app
+
+# No healthcheck
+EXPOSE 3000
+
+# Secrets embedded in Dockerfile (BAD!)
+ENV DATABASE_PASSWORD=securepassword123
+ENV API_KEY=sk-1234567890abcdef
+
+# Start without security context
+CMD ["node", "server.js"]

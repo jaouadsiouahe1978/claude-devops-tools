@@ -1,0 +1,176 @@
+# Harbor Configuration
+# Reference: https://goharbor.io/docs/next/install-config/
+
+hostname: localhost
+
+# HTTP related config
+http:
+  port: 8080
+
+# HTTPS related config
+https:
+  port: 8443
+  # Set to an empty string if you don't have a certificate yet
+  certificate: /etc/harbor/tls/server.crt
+  private_key: /etc/harbor/tls/server.key
+
+# The initial password of Harbor admin, change this before any production use
+harbor_admin_password: Harbor12345
+
+# Harbor DB Configuration
+database:
+  # The password for the postgres user 'postgres'. Change this before any production use.
+  password: Harbor12345
+  # The maximum number of connections in the idle connection pool. If it <= 0, no idle connections are retained.
+  max_idle_conns: 50
+  # The maximum number of open connections to the database. If it <= 0, then there is no limit on the number of open connections.
+  max_open_conns: 1000
+
+# The default data volume
+data_volume: /data
+
+# Storage backend configuration
+storage_service:
+  ca_cert: ""
+  # Set to "filesystem" to use local filesystem, or set to another value to use other backends like S3, Ceph, MinIO, etc.
+  type: filesystem
+  filesystem:
+    rootdirectory: /data/registry
+  # For other storage backends, uncomment to enable them
+  # s3:
+  #   region: us-west-1
+  #   bucket: harbor-registry
+  #   accesskey: AKIAIOSFODNN7EXAMPLE
+  #   secretkey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  #   secure: true
+  #   chunksize: 5242880
+  #   rootdirectory: /s3/object/name/prefix
+  #   signerversion: ""
+
+# Logging
+log:
+  # options are debug, info, warning, error, fatal
+  level: info
+  local:
+    rotate_count: 50
+    rotate_size: 104857600
+    location: /var/log/harbor
+
+# External Redis for session and distributed functions
+external_redis:
+  host: redis
+  port: 6379
+  password: ""
+  db_index: 1
+
+# Clair configuration
+clair:
+  enabled: false
+  # If leave empty, Clair is deployed in Harbor's docker compose, otherwise set its URL and skip the Clair piece in docker-compose file, e.g. http://clair:6061
+  url: ""
+
+# Notary related settings
+notary:
+  enabled: true
+  # Change its URL to an IP address if accessing Notary locally from a docker container.
+  url: http://notary-server:4443
+
+# Metrics
+metrics:
+  enabled: false
+  port: 9090
+  path: /metrics
+
+# Audit log
+audit_log:
+  # Possible values are "db" and "stdout"
+  level: info
+
+# Garbage collection
+gc:
+  # The interval of performing garbage collection tasks
+  schedule: "0 0 * * *"
+
+# External URL. You may modify this field during public status pages.
+# For example, change it to a CNAME if that is your domain on public URLs.
+external_url: http://localhost:8080
+
+# The initial project created at first time to be used by docker/helm to push/pull images.
+project_creation_restriction: authenticated
+
+# Determine whether the image pushed to Harbor should be signed by internal CBIS or not. With internal CBIS signing, pushing image to Harbor will generate a JSON Web Signature (JWS) signature for the image, unless the image is already signed by external service. Currently, only gov cloud and a few channels support this feature.
+internal_tls:
+  enabled: false
+
+# Session settings
+session:
+  timeout: 30m
+
+# Self registration configuration
+self_registration:
+  enabled: true
+
+# Webhook settings
+webhook:
+  job_max_retry: 3
+  notification_level: 3
+  client_config:
+    http_client_timeout: 3s
+
+# Upload purging
+upload_purging:
+  enabled: true
+  age: 168h
+  interval: 24h
+  dryrun: false
+
+# Performance tuning
+performance:
+  max_job_workers: 10
+
+# oidc provider endpoint
+oidc_provider:
+  name: ""
+  endpoint: ""
+  client_id: ""
+  client_secret: ""
+  scope: openid,profile,email
+  admin_group: ""
+
+# LDAP Auth Mode
+ldap_auth:
+  url: ""
+  verify_cert: true
+  start_tls: false
+  ldap_search_dn: ""
+  ldap_search_password: ""
+  ldap_base_dn: ""
+  ldap_filter: ""
+  ldap_uid: ""
+  ldap_scope: 3
+  ldap_connection_timeout: 5
+  ldap_read_timeout: 15
+
+# UAA Auth Mode
+uaa:
+  client_id: ""
+  client_secret: ""
+  endpoint: ""
+  verify_cert: true
+  skip_ssl_verify: false
+
+# Proxy Settings
+proxy:
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+
+# Security configuration
+security:
+  enable_content_trust: false
+  enable_content_trust_cosign: false
+  default_content_trust: false
+  default_content_trust_cosign: false
+  csp_enabled: false
+  token_expiration: 30
+  robot_name_prefix: robot$

@@ -1,0 +1,84 @@
+# Trivy Configuration
+# Reference: https://aquasecurity.github.io/trivy/latest/configuration/
+
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+exit-code: 0
+
+# Skip specific checks
+skip-dirs:
+  - /vendor
+  - /node_modules
+  - /.git
+
+skip-files:
+  - "*.md"
+  - "*.txt"
+
+# Generate SBOM
+format: table
+output: ""
+
+# Cache configuration
+offline-scan: false
+skip-db-update: false
+skip-java-db-update: false
+
+# Misconfiguration scanning
+scan:
+  target: image
+  type: ""
+
+# Security database
+db:
+  repository: ghcr.io/aquasecurity/trivy-db:2
+  java-db-repository: ghcr.io/aquasecurity/trivy-java-db:2
+
+# Secret scanning
+secret:
+  enabled: true
+
+# Misconfig scanning
+misconfig:
+  enabled: true
+  deepsource: false
+
+# License scanning
+license:
+  enabled: false
+
+# Module scanning
+modules:
+  enabled: true
+
+# SBOM generation
+sbom:
+  cyclonedx:
+    version: "1.4"
+
+# Attestation verification
+attestation:
+  skip: true
+
+# Policy file
+policy:
+  rego: ""
+  skip-evaluate: false
+
+# Timeout
+timeout: 5m
+
+# Custom registries
+registries:
+  - name: docker.io
+    prefix: ""
+
+# Ignoring vulnerabilities by ID
+ignore:
+  - vuln-id: CVE-YEAR-00000
+    exp-type: all
+    platforms:
+      - linux/amd64
