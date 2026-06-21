@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webapp-code
+  namespace: devops
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    import os
+    from datetime import datetime
+    from flask import Flask, jsonify, request
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    import time
+
+    app = Flask(__name__)
+
+    def get_db_connection(retries=5, delay=2):
+        for attempt in range(retries):
+            try:
+                conn = psycopg2.connect(
+                    host="postgres",
+                    port=5432,
+                    user=os.getenv('POSTGRES_USER'),
+                    password=os.getenv('POSTGRES_PASSWORD'),
+                    database=os.getenv('POSTGRES_DB')
+                )
+                print("Database connected")
+                return conn
+            except psycopg2.OperationalError as e:
+                print(f"Connection attempt {attempt + 1} failed: {e}")
+                if attempt < retries - 1:
+                    time.sleep(delay)
+        raise Exception("Could not connect to database")
+
+    def init_db():
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS entries (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cur.execute('SELECT COUNT(*) FROM entries')
+        if cur.fetchone()[0] == 0:
+            cur.execute('''
+                INSERT INTO entries (title, content) VALUES
+                ('Welcome', 'Persistent data with K8s'),
+                ('StatefulSet', 'Stable pod identities'),
+                ('DevOps', 'Infrastructure as Code')
+            ''')
+        conn.commit()
+        cur.close()
+        conn.close()
+
+    @app.route('/health', methods=['GET'])
+    def health():
+        try:
+            conn = get_db_connection()
+            conn.close()
+            return jsonify({"status": "healthy"}), 200
+        except:
+            return jsonify({"status": "unhealthy"}), 503
+
+    @app.route('/', methods=['GET'])
+    def home():
+        return jsonify({
+            "app": os.getenv('APP_NAME'),
+            "version": os.getenv('APP_VERSION')
+        })
+
+    @app.route('/api/data', methods=['GET'])
+    def get_data():
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute('SELECT * FROM entries ORDER BY created_at DESC')
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return jsonify({"success": True, "data": [dict(r) for r in rows]}), 200
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    if __name__ == '__main__':
+        init_db()
+        app.run(host='0.0.0.0', port=5000, debug=False)
