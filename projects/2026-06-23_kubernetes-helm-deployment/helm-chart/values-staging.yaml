@@ -1,0 +1,32 @@
+namespace: devops-staging
+
+api:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    LOG_LEVEL: DEBUG
+
+postgres:
+  replicaCount: 1
+  storage:
+    size: 2Gi
+
+redis:
+  replicaCount: 1
+
+autoscaling:
+  enabled: false
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api-staging.local
+      paths:
+        - path: /
+          pathType: Prefix
