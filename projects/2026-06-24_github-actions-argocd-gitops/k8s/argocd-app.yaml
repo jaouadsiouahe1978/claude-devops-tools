@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-demo-app
+  namespace: argocd
+spec:
+  # Projet destination
+  project: default
+
+  # Source Git
+  source:
+    repoURL: https://github.com/jaouadsiouahe1978/claude-devops-tools
+    targetRevision: main
+    path: projects/2026-06-24_github-actions-argocd-gitops/k8s
+
+  # Destination (cluster cible)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitops-demo
+
+  # Synchronisation automatique
+  syncPolicy:
+    automated:
+      prune: true      # Supprime les ressources supprimées dans Git
+      selfHeal: true   # Réconcilie en continu
+      allow:
+        empty: false   # N'autorise pas les applications vides
+    syncOptions:
+    - CreateNamespace=true  # Crée le namespace s'il n'existe pas
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Évaluation de la santé
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas  # Ignore les différences de replicas si gérées externalement
+
+  # Notification sur changements
+  notifications:
+    enabled: true
+
+  # Gestion du lifecycle
+  info:
+  - name: Documentation
+    value: https://github.com/jaouadsiouahe1978/claude-devops-tools/tree/main/projects/2026-06-24_github-actions-argocd-gitops
+  - name: Slack Channel
+    value: '#devops'

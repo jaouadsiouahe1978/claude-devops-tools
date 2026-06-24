@@ -1,0 +1,84 @@
+name: Update Kubernetes Manifests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-push.yml'
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/gitops-app
+
+jobs:
+  update-manifests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get image tag
+        id: image
+        run: |
+          # Utiliser le SHA du commit comme tag
+          TAG="sha-${GITHUB_SHA:0:7}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Update deployment manifest
+        run: |
+          IMAGE="${{ steps.image.outputs.image }}"
+
+          # Update the deployment.yaml with new image
+          if [ -f k8s/deployment.yaml ]; then
+            sed -i "s|image: .*$|image: ${IMAGE}|g" k8s/deployment.yaml
+            echo "Updated k8s/deployment.yaml with image: ${IMAGE}"
+          fi
+
+      - name: Update image tag in values
+        run: |
+          # Create or update image-tag file for reference
+          echo "${{ steps.image.outputs.tag }}" > k8s/.image-tag
+          echo "Latest image tag: ${{ steps.image.outputs.tag }}"
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add k8s/deployment.yaml k8s/.image-tag 2>/dev/null || true
+            git commit -m "chore: update deployment image to ${{ steps.image.outputs.image }}"
+            git push origin main
+            echo "✅ Pushed updated manifests"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
+
+  notify-sync:
+    runs-on: ubuntu-latest
+    needs: update-manifests
+    if: success()
+
+    steps:
+      - name: Notify ArgoCD to sync
+        run: |
+          echo "✅ ArgoCD will automatically sync the changes"
+          echo "Application: gitops-app"
+          echo "Namespace: default"
+          echo "Image Tag: ${{ needs.update-manifests.outputs.tag }}"
