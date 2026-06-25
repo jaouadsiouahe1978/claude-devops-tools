@@ -1,0 +1,8 @@
+prometheus_data/
+grafana_data/
+data/
+.env.local
+*.swp
+*.swo
+*~
+.DS_Store
