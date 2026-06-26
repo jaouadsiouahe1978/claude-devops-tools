@@ -1,0 +1,33 @@
+# Environnement
+.env.local
+.env.*.local
+
+# Données sensibles
+*.sql
+!init-db/init.sql
+backup*
+dump*
+
+# Logs
+*.log
+logs/
+
+# Cache
+.DS_Store
+.cache/
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Données persistantes (locales)
+pg_data/
+redis_data/
