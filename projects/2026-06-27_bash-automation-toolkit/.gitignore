@@ -1,0 +1,33 @@
+# Logs and temp files
+*.log
+*.tmp
+/tmp/
+
+# Backups
+/backups/
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test artifacts
+test-output/
+.test-cache/
+
+# Credentials (never commit!)
+.env
+.env.local
+credentials.txt
+secrets/
+
+# Cache
+__pycache__/
+*.pyc

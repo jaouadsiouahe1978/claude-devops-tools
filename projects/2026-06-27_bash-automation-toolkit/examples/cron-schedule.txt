@@ -1,0 +1,87 @@
+# Example Crontab entries for automated DevOps tasks
+# Add to: crontab -e
+
+# ===== BACKUPS =====
+
+# PostgreSQL daily backup at 2:00 AM
+0 2 * * * /home/user/scripts/backup-databases.sh --type postgres --output /backups --retention 30 >> /var/log/backup.log 2>&1
+
+# MySQL weekly backup on Sundays at 3:00 AM
+0 3 * * 0 /home/user/scripts/backup-databases.sh --type mysql --output /backups --retention 7 >> /var/log/backup.log 2>&1
+
+# ===== MONITORING =====
+
+# Health check every 5 minutes
+*/5 * * * * /home/user/scripts/system-health-check.sh --cpu-alert 75 --mem-alert 80 >> /var/log/health.log 2>&1
+
+# Full health check with detailed report every 30 minutes
+*/30 * * * * /home/user/scripts/system-health-check.sh --no-color >> /var/log/health-detailed.log 2>&1
+
+# ===== LOG ROTATION =====
+
+# Rotate app logs daily at 3:00 AM
+0 3 * * * /home/user/scripts/log-rotation-manager.sh --dir /var/log/app --size 100M --keep 14 >> /var/log/rotation.log 2>&1
+
+# Rotate multiple directories (app, web, database)
+0 2 * * * /home/user/scripts/log-rotation-manager.sh --dir /var/log/app && /home/user/scripts/log-rotation-manager.sh --dir /var/log/web >> /var/log/rotation.log 2>&1
+
+# ===== CLEANUP =====
+
+# Clean /tmp every Sunday at 4:00 AM (remove files older than 30 days)
+0 4 * * 0 /home/user/scripts/cleanup-old-files.sh --days 30 --force /tmp /var/tmp >> /var/log/cleanup.log 2>&1
+
+# Clean cache directory weekly, keep 7 days
+0 2 * * 1 /home/user/scripts/cleanup-old-files.sh --days 7 --min-size 1M --force /home/user/cache >> /var/log/cleanup.log 2>&1
+
+# ===== DEPLOYMENT =====
+
+# Deploy every night at 1:00 AM (check for updates)
+0 1 * * * /home/user/scripts/app-deployment.sh \
+  --repo https://github.com/user/myapp.git \
+  --branch main \
+  --target /opt/myapp \
+  --healthcheck http://localhost:8080/health \
+  >> /var/log/deployment.log 2>&1
+
+# ===== COMBINED ROUTINES =====
+
+# Full DevOps routine on Monday at 1 AM (backups + cleanup + deployment)
+0 1 * * 1 {
+  /home/user/scripts/backup-databases.sh --type postgres --output /backups
+  /home/user/scripts/cleanup-old-files.sh --days 30 --force /tmp
+  /home/user/scripts/app-deployment.sh --repo https://github.com/user/app.git --target /opt/app
+} >> /var/log/devops-routine.log 2>&1
+
+# ===== HEALTH CHECK WITH ALERTS =====
+
+# Every hour: check health and alert if critical
+0 * * * * /home/user/scripts/system-health-check.sh --cpu-alert 85 --mem-alert 90 | grep -q "CRITICAL" && \
+  echo "ALERT: System critical" | mail -s "DevOps Alert" admin@example.com
+
+# ===== NICE LEVELS =====
+
+# For CPU-intensive tasks, use lower priority
+0 2 * * * nice -n 19 /home/user/scripts/backup-databases.sh --type postgres --output /backups
+
+# ===== ENVIRONMENT VARIABLES =====
+
+# Set up environment for scripts
+LOGFILE=/var/log/devops.log
+SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+DEBUG=0
+
+# Then scripts can use these
+0 2 * * * /home/user/scripts/backup-databases.sh --type postgres --output /backups
+
+# ===== RUNNING SCHEDULE IN SYSTEMD TIMER (Alternative to Cron) =====
+
+# Instead of cron, use systemd timers for better logging and management
+# See: systemd-backup.service and systemd-backup.timer files
+
+# Enable and start:
+# systemctl enable backup.timer
+# systemctl start backup.timer
+
+# Monitor:
+# systemctl status backup.timer
+# journalctl -u backup.service -f

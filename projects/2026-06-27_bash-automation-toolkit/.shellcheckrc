@@ -1,0 +1,15 @@
+# ShellCheck configuration
+# https://www.shellcheck.net/
+
+# Opt in to check all warnings
+enable=all
+
+# External sources - we won't check them
+external-sources=true
+
+# Source path - where to find sourced files
+source-path=lib/
+
+# Exclude specific warnings
+# SC1091 - Can't follow source
+disable=SC1091
