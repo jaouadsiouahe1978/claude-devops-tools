@@ -1,0 +1,135 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . }}
+    component: backend
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . }}
+      component: backend
+
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.selectorLabels" . }}
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
+
+    spec:
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+        ports:
+        - name: api
+          containerPort: {{ .Values.backend.service.targetPort }}
+          protocol: TCP
+
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: api
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: api
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+        # Environment variables from values
+        env:
+        {{- range .Values.backend.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+
+        # Secrets from Secret resource
+        {{- if .Values.secrets.enabled }}
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "myapp.fullname" . }}-secrets
+              key: DATABASE_PASSWORD
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "myapp.fullname" . }}-secrets
+              key: API_KEY
+        {{- end }}
+
+        # ConfigMap
+        {{- if .Values.configMap.enabled }}
+        - name: CONFIG_FILE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "myapp.fullname" . }}-config
+              key: app.config.yml
+        {{- end }}
+
+        # Resources
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: app-logs
+          mountPath: /var/log/app
+
+      # Security context au niveau pod
+      securityContext:
+        fsGroup: 1000
+
+      # Volumes
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: app-logs
+        emptyDir: {}
+
+      # Affinity rules
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - {{ include "myapp.name" . }}
+              topologyKey: kubernetes.io/hostname
+
+      terminationGracePeriodSeconds: 30
+{{- end }}

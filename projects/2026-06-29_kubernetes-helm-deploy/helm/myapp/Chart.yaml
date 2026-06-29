@@ -1,0 +1,31 @@
+apiVersion: v2
+name: myapp
+description: Multi-tier application with frontend, backend API, and database
+type: application
+
+# Chart version
+version: 1.0.0
+
+# Application version
+appVersion: 1.0.0
+
+# Metadata
+keywords:
+  - kubernetes
+  - helm
+  - microservices
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+sources:
+  - https://github.com/jaouadsiouahe1978/claude-devops-tools
+maintainers:
+  - name: Jaouad
+    email: jsinfo38@gmail.com
+
+# Optional: dependencies (pour PostgreSQL)
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - database

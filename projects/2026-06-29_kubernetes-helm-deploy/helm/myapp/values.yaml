@@ -1,0 +1,151 @@
+# Default values for myapp Helm Chart
+
+replicaCount: 2
+
+# Frontend Configuration
+frontend:
+  enabled: true
+  image:
+    repository: myapp/frontend
+    tag: "1.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Environment variables
+  env:
+    - name: BACKEND_URL
+      value: http://myapp-backend:5000
+    - name: ENVIRONMENT
+      value: production
+
+# Backend Configuration
+backend:
+  enabled: true
+  image:
+    repository: myapp/backend
+    tag: "1.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Environment variables from ConfigMap
+  env:
+    - name: DATABASE_HOST
+      value: postgresql
+    - name: DATABASE_PORT
+      value: "5432"
+    - name: DATABASE_NAME
+      value: myapp_db
+    - name: FLASK_ENV
+      value: production
+    - name: LOG_LEVEL
+      value: INFO
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  hosts:
+    - host: web.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - web.local
+
+# ConfigMap Configuration
+configMap:
+  enabled: true
+  data:
+    app.config.yml: |
+      server:
+        port: 5000
+        debug: false
+      database:
+        pool_size: 10
+        timeout: 30
+      cache:
+        ttl: 3600
+
+# Secrets Configuration
+secrets:
+  enabled: true
+  # IMPORTANT: À remplacer avec les vraies secrets en production
+  # Utiliser : kubectl create secret generic myapp-secrets --from-literal=...
+  data:
+    DATABASE_PASSWORD: "postgres123"
+    API_KEY: "secret-api-key-12345"
+    ADMIN_TOKEN: "admin-token-xyz"
+
+# PostgreSQL Database (optional dependency)
+postgresql:
+  enabled: true
+  auth:
+    username: myapp_user
+    password: postgres123
+    database: myapp_db
+
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: standard
+
+  metrics:
+    enabled: false
+
+# Persistence Configuration
+persistence:
+  enabled: false
+  storageClassName: standard
+  accessMode: ReadWriteOnce
+  size: 5Gi
+
+# Autoscaling Configuration
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Labels
+labels:
+  app.kubernetes.io/name: myapp
+  app.kubernetes.io/version: "1.0.0"
+  team: devops
+  environment: development
+
+# Annotations
+annotations:
+  description: "Multi-tier application with Kubernetes and Helm"
+  author: Jaouad

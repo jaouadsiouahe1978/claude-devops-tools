@@ -1,0 +1,29 @@
+# Kubernetes
+*.lock
+helm/myapp/charts/
+helm/myapp/Chart.lock
+
+# Docker
+__pycache__/
+*.pyc
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
