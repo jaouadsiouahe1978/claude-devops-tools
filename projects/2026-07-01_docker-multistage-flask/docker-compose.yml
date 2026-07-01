@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Service PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: flask-db
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppassword123
+      POSTGRES_DB: flaskapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d flaskapp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Service Flask App
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flask-app
+    environment:
+      FLASK_APP: app.py
+      DATABASE_URL: postgresql://appuser:apppassword123@db:5432/flaskapp
+      FLASK_ENV: development
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+    command: python app.py
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
