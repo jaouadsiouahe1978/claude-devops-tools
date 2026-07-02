@@ -1,0 +1,52 @@
+# Development environment overrides
+replicaCount: 1
+
+image:
+  tag: "1.0.0-dev"
+  pullPolicy: Always
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+  hosts:
+    - host: my-app-dev.example.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+env:
+  ENV: "dev"
+  LOG_LEVEL: "DEBUG"
+  DEBUG: "true"
+  FEATURE_FLAG: "enabled"
+  DB_HOST: "postgres-dev.dev.svc.cluster.local"
+
+livenessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 20
+
+readinessProbe:
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+podAnnotations:
+  environment: "dev"
+  team: "backend"
+
+strategy:
+  type: Recreate
