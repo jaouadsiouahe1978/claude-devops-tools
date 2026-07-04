@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: devops
+data:
+  POSTGRES_DB: "devops_db"
+  POSTGRES_USER: "postgres"
+  PGDATA: "/var/lib/postgresql/data/pgdata"
+  postgres.conf: |
+    # Replication Configuration
+    wal_level = replica
+    max_wal_senders = 10
+    max_replication_slots = 10
+    hot_standby = on
+    hot_standby_feedback = on
+
+    # Performance
+    shared_buffers = 256MB
+    effective_cache_size = 1GB
+    maintenance_work_mem = 64MB
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+    default_statistics_target = 100
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    work_mem = 4MB
+    min_wal_size = 2GB
+    max_wal_size = 8GB
+
+    # Logging
+    log_statement = 'all'
+    log_duration = on
+    log_min_duration_statement = 0
+
+  pg_hba.conf: |
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    all             all             ::1/128                 trust
+    host    replication     all             0.0.0.0/0               md5
+    host    replication     all             ::/0                    md5
+    host    all             all             0.0.0.0/0               md5
+    host    all             all             ::/0                    md5

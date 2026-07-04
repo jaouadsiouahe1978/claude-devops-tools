@@ -1,0 +1,100 @@
+# Optional: Prometheus metrics for monitoring PostgreSQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-exporter-config
+  namespace: devops
+data:
+  postgres-exporter-queries.yaml: |
+    pg_settings:
+      query: "SELECT name, setting::float FROM pg_settings WHERE vartype = 'real'"
+      metrics:
+        - name: setting
+          help: "Postgres runtime settings"
+          type: gauge
+          labels:
+            - name
+
+    pg_database:
+      query: |
+        SELECT
+          datname,
+          numbackends,
+          xact_commit,
+          xact_rollback,
+          blks_read,
+          blks_hit,
+          tup_returned,
+          tup_fetched,
+          tup_inserted,
+          tup_updated,
+          tup_deleted
+        FROM pg_stat_database WHERE datname != 'template0' AND datname != 'template1'
+      metrics:
+        - name: numbackends
+          help: "Number of backends"
+          type: gauge
+        - name: xact_commit
+          help: "Transactions committed"
+          type: counter
+        - name: xact_rollback
+          help: "Transactions rolled back"
+          type: counter
+
+    pg_replication:
+      query: |
+        SELECT
+          client_addr::text,
+          state,
+          sync_state,
+          write_lag,
+          flush_lag,
+          replay_lag
+        FROM pg_stat_replication
+      metrics:
+        - name: write_lag_seconds
+          help: "Replication write lag in seconds"
+          type: gauge
+          valuetype: "double"
+        - name: flush_lag_seconds
+          help: "Replication flush lag in seconds"
+          type: gauge
+          valuetype: "double"
+        - name: replay_lag_seconds
+          help: "Replication replay lag in seconds"
+          type: gauge
+          valuetype: "double"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  namespace: devops
+  labels:
+    app: postgres
+    component: exporter
+spec:
+  selector:
+    app: postgres
+  ports:
+  - name: metrics
+    port: 9187
+    targetPort: 9187
+
+---
+# Example Prometheus ServiceMonitor (if Prometheus Operator is installed)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres
+  namespace: devops
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+      component: exporter
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

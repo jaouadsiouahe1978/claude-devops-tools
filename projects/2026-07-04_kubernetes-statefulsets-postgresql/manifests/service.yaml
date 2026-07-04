@@ -1,0 +1,56 @@
+---
+# Headless Service pour la découverte DNS et la réplication
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: devops
+  labels:
+    app: postgres
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: postgresql
+    name: postgresql
+  publishNotReadyAddresses: true
+
+---
+# Service pour l'accès à la base via une IP stable
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: devops
+  labels:
+    app: postgres
+    role: primary
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: postgresql
+    name: postgresql
+
+---
+# Service NodePort pour accès externe (développement uniquement)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-external
+  namespace: devops
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: postgresql
+    nodePort: 30432
+    name: postgresql
