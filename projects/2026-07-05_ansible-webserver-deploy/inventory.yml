@@ -1,0 +1,48 @@
+---
+# Inventory file for Ansible
+# Groups and host definitions with variables
+
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_port: 22
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    environment: production
+
+  children:
+    webservers:
+      hosts:
+        web1:
+          ansible_host: 192.168.1.100
+          server_role: primary
+        web2:
+          ansible_host: 192.168.1.101
+          server_role: secondary
+      vars:
+        nginx_port: 80
+        nginx_user: www-data
+        php_version: 8.2
+
+    database:
+      hosts:
+        db1:
+          ansible_host: 192.168.1.50
+          db_backup: true
+      vars:
+        postgres_version: 15
+        postgres_port: 5432
+        postgres_max_connections: 100
+
+    monitoring:
+      hosts:
+        monitor1:
+          ansible_host: 192.168.1.200
+          scrape_interval: 15s
+      vars:
+        node_exporter_port: 9100
+
+    # Virtual group for all except monitoring
+    app_servers:
+      children:
+        - webservers
+        - database

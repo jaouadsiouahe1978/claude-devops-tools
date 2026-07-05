@@ -1,0 +1,67 @@
+---
+# Monitoring Role: Install Node Exporter for Prometheus metrics
+
+- name: Create node-exporter user
+  user:
+    name: node_exporter
+    shell: /bin/false
+    createhome: no
+    state: present
+
+- name: Download Node Exporter
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz"
+    dest: /tmp/node_exporter.tar.gz
+    checksum: "sha256:7e05e4b6ae9c9e75e97ae9c77f1250a8ad4dacad52a9b92ef4dc05e5d557e51a"
+
+- name: Extract Node Exporter
+  unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: Copy Node Exporter binary
+  copy:
+    src: /tmp/node_exporter-1.6.1.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start Node Exporter
+  systemd:
+    name: node_exporter
+    daemon_reload: yes
+    enabled: yes
+    state: started
+  tags: service-start
+
+- name: Create Prometheus configuration
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    backup: yes
+  when: inventory_hostname in groups['monitoring']
+
+- name: Verify Node Exporter is responding
+  uri:
+    url: "http://127.0.0.1:{{ node_exporter_port }}/metrics"
+    status_code: 200
+  register: exporter_check
+  retries: 3
+  delay: 2
+
+- name: Display metrics endpoint
+  debug:
+    msg: "Node Exporter metrics available at http://{{ ansible_default_ipv4.address }}:{{ node_exporter_port }}/metrics"
+  when: exporter_check.status == 200

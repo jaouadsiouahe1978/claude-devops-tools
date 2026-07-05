@@ -1,0 +1,9 @@
+---
+# Database role variables
+
+postgres_packages:
+  - "postgresql-{{ postgres_version }}"
+  - postgresql-contrib
+  - python3-psycopg2
+
+backup_retention_days: 7

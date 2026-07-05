@@ -1,0 +1,97 @@
+---
+# Database Role: Install and configure PostgreSQL
+
+- name: Add PostgreSQL GPG key
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+
+- name: Add PostgreSQL repository
+  apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install PostgreSQL
+  apt:
+    name:
+      - "postgresql-{{ postgres_version }}"
+      - postgresql-contrib
+      - python3-psycopg2
+    state: present
+
+- name: Ensure PostgreSQL is started and enabled
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+  tags: service-start
+
+- name: Create backup directory
+  file:
+    path: /var/backups/postgresql
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  when: db_backup
+
+- name: Create default database
+  postgresql_db:
+    name: application
+    encoding: UTF8
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Create application user
+  postgresql_user:
+    name: appuser
+    password: "{{ lookup('password', '/dev/null length=16') }}"
+    db: application
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Grant privileges
+  postgresql_privs:
+    db: application
+    privs: ALL
+    type: database
+    role: appuser
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Configure PostgreSQL listen address
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: "^#listen_addresses"
+    line: "listen_addresses = 'localhost'"
+    backup: yes
+  notify: restart postgresql
+
+- name: Create backup script
+  copy:
+    content: |
+      #!/bin/bash
+      BACKUP_DIR="/var/backups/postgresql"
+      DATE=$(date +%Y%m%d_%H%M%S)
+      pg_dump application | gzip > $BACKUP_DIR/application_$DATE.sql.gz
+      find $BACKUP_DIR -mtime +7 -delete
+    dest: /usr/local/bin/backup-postgres.sh
+    mode: '0755'
+  when: db_backup
+
+- name: Add daily backup cron job
+  cron:
+    name: "PostgreSQL backup"
+    hour: "2"
+    minute: "0"
+    job: "/usr/local/bin/backup-postgres.sh"
+    user: postgres
+    state: present
+  when: db_backup

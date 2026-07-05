@@ -1,0 +1,81 @@
+---
+# Webserver Role: Install and configure Nginx + PHP
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Nginx and PHP packages
+  apt:
+    name:
+      - nginx
+      - php-fpm
+      - php-mysql
+      - php-mbstring
+      - php-xml
+      - curl
+      - wget
+    state: present
+
+- name: Create PHP-FPM socket directory
+  file:
+    path: /var/run/php-fpm
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Deploy Nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+    backup: yes
+  notify: restart nginx
+
+- name: Deploy PHP info page for testing
+  template:
+    src: info.php.j2
+    dest: /var/www/html/index.php
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Enable Nginx service
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+  tags: service-start
+
+- name: Enable PHP-FPM service
+  systemd:
+    name: php{{ php_version }}-fpm
+    enabled: yes
+    state: started
+  tags: service-start
+
+- name: Create application directory
+  file:
+    path: /var/www/app
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Deploy sample application
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+        <head><title>Deployed with Ansible</title></head>
+        <body>
+          <h1>✅ Web Server Active</h1>
+          <p>Hostname: {{ ansible_hostname }}</p>
+          <p>IP: {{ ansible_default_ipv4.address }}</p>
+          <p>Role: {{ server_role }}</p>
+        </body>
+      </html>
+    dest: /var/www/html/status.html
+    owner: www-data
+    group: www-data

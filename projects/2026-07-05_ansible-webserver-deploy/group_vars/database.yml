@@ -1,0 +1,22 @@
+---
+# Group variables for database servers
+
+# PostgreSQL settings
+postgres_version: 15
+postgres_port: 5432
+postgres_max_connections: 100
+postgres_shared_buffers: "256MB"
+postgres_effective_cache_size: "1GB"
+
+# Security
+postgres_listen_addresses: "localhost"
+postgres_auth_method: "md5"
+
+# Backup settings
+db_backup: true
+backup_schedule: "2 0 * * *"  # 2 AM daily
+backup_retention_days: 7
+
+# Monitoring
+enable_logging: true
+log_min_duration_statement: 1000  # Log queries > 1 second

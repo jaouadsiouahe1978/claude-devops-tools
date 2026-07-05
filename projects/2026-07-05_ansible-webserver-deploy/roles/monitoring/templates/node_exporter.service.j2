@@ -1,0 +1,16 @@
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=node_exporter
+Group=node_exporter
+ExecStart=/usr/local/bin/node_exporter \
+    --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/) \
+    --collector.netdev.device-exclude=^(veth.*)$$
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

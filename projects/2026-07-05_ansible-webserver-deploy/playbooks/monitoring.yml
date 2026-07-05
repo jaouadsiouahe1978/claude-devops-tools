@@ -1,0 +1,29 @@
+---
+# Standalone playbook for monitoring deployment
+
+- name: Deploy monitoring infrastructure
+  hosts: all
+  become: yes
+  gather_facts: yes
+  roles:
+    - monitoring
+
+  post_tasks:
+    - name: Verify Node Exporter is running
+      systemd:
+        name: node_exporter
+        state: started
+      tags: verify
+
+    - name: Check metrics endpoint
+      uri:
+        url: "http://127.0.0.1:9100/metrics"
+        status_code: 200
+      register: metrics_check
+
+    - name: Display monitoring status
+      debug:
+        msg: |
+          ✅ Monitoring deployed on {{ inventory_hostname }}
+          Metrics: http://{{ ansible_default_ipv4.address }}:9100/metrics
+      when: metrics_check.status == 200

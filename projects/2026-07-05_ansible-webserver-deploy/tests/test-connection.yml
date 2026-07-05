@@ -1,0 +1,46 @@
+---
+# Test playbook - Validates connection and basic system info
+
+- name: Connection and validation test
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Display system information
+      debug:
+        msg: |
+          System: {{ ansible_system }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          IP: {{ ansible_default_ipv4.address }}
+          CPU Count: {{ ansible_processor_vcpus }}
+
+    - name: Check connectivity to all hosts
+      ping:
+
+    - name: Check DNS resolution
+      command: nslookup google.com
+      register: dns_test
+      changed_when: false
+
+    - name: Check internet connectivity
+      command: curl -s -o /dev/null -w "%{http_code}" https://www.google.com
+      register: internet_test
+      changed_when: false
+      timeout: 5
+
+    - name: Test Webserver connectivity
+      uri:
+        url: "http://{{ hostvars[item]['ansible_default_ipv4']['address'] }}/status.html"
+        status_code: 200
+      ignore_errors: yes
+      loop: "{{ groups.get('webservers', []) }}"
+      when: inventory_hostname in groups['webservers']
+
+    - name: Test Database connectivity
+      postgresql_query:
+        db: application
+        query: "SELECT version();"
+      become: yes
+      become_user: postgres
+      ignore_errors: yes
+      when: inventory_hostname in groups['database']

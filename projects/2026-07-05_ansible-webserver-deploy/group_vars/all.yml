@@ -1,0 +1,23 @@
+---
+# Global variables for all hosts
+
+# Environment
+environment: production
+datacenter: eu-west-1
+region: Grenoble
+
+# Common settings
+timezone: Europe/Paris
+ntp_pool: pool.ntp.org
+
+# SSH settings
+ssh_port: 22
+ssh_timeout: 30
+
+# Syslog
+syslog_server: localhost
+log_retention_days: 30
+
+# Monitoring
+monitoring_enabled: true
+metrics_retention_days: 15

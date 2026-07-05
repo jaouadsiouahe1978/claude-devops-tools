@@ -1,0 +1,48 @@
+---
+# Main orchestration playbook
+# Deploys complete stack: database, webservers, monitoring
+
+- name: Deploy complete infrastructure
+  hosts: all
+  gather_facts: yes
+  pre_tasks:
+    - name: Display target hosts
+      debug:
+        msg: "Deploying to {{ inventory_hostname }} ({{ ansible_host }})"
+
+- name: Deploy database servers
+  hosts: database
+  roles:
+    - database
+
+- name: Deploy web servers
+  hosts: webservers
+  roles:
+    - webserver
+
+- name: Deploy monitoring
+  hosts: monitoring
+  roles:
+    - monitoring
+
+- name: Post-deployment validation
+  hosts: all
+  tasks:
+    - name: Collect service status
+      command: systemctl status {{ item }} --no-pager
+      register: service_status
+      ignore_errors: yes
+      loop:
+        - nginx
+        - postgresql
+        - node_exporter
+      tags: validate
+      when: ansible_service_mgr == "systemd"
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ✅ Deployment completed!
+          Database: {{ hostvars[groups['database'][0]]['ansible_host'] }}
+          WebServers: {{ groups['webservers'] | join(', ') }}
+          Monitoring: {{ groups['monitoring'][0] }}

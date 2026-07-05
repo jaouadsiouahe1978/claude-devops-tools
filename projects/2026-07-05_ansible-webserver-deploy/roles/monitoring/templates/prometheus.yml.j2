@@ -1,0 +1,27 @@
+global:
+  scrape_interval: {{ scrape_interval | default('15s') }}
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'webservers'
+    static_configs:
+      - targets:
+{% for host in groups['webservers'] %}
+          - '{{ hostvars[host]["ansible_host"] }}:{{ node_exporter_port }}'
+{% endfor %}
+
+  - job_name: 'database'
+    static_configs:
+      - targets:
+{% for host in groups['database'] %}
+          - '{{ hostvars[host]["ansible_host"] }}:{{ node_exporter_port }}'
+{% endfor %}
+
+  - job_name: 'monitoring'
+    static_configs:
+      - targets:
+          - 'localhost:{{ node_exporter_port }}'

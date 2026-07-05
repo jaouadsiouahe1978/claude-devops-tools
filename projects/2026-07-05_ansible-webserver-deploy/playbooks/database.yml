@@ -1,0 +1,35 @@
+---
+# Standalone playbook for database deployment
+
+- name: Deploy database servers
+  hosts: database
+  become: yes
+  gather_facts: yes
+  pre_tasks:
+    - name: Update system
+      apt:
+        update_cache: yes
+        upgrade: dist
+      tags: system-update
+
+  roles:
+    - database
+
+  post_tasks:
+    - name: Verify PostgreSQL is running
+      systemd:
+        name: postgresql
+        state: started
+      tags: verify
+
+    - name: Test database connectivity
+      postgresql_query:
+        db: application
+        query: "SELECT count(*) FROM information_schema.tables;"
+      become_user: postgres
+      register: db_test
+
+    - name: Display deployment result
+      debug:
+        msg: "✅ Database deployed successfully - {{ db_test.query_result[0] }} tables available"
+      when: db_test.query_result is defined

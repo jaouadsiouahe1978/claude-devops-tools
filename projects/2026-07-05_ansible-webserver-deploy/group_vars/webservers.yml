@@ -1,0 +1,22 @@
+---
+# Group variables for all webservers
+
+# Package versions
+nginx_version: latest
+php_version: "8.2"
+
+# Service configuration
+nginx_port: 80
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_keepalive_timeout: 65
+
+# PHP configuration
+php_memory_limit: 256M
+php_upload_max_filesize: 50M
+php_max_execution_time: 30
+
+# Application settings
+app_name: "webapp"
+app_version: "1.0.0"
+app_environment: "{{ environment }}"

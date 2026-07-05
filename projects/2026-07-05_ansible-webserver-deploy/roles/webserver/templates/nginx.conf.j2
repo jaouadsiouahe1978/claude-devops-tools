@@ -1,0 +1,36 @@
+# Nginx configuration template - deployed by Ansible
+
+server {
+    listen {{ nginx_port }};
+    server_name _;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    root /var/www/html;
+    index index.php index.html index.htm;
+
+    # PHP handler
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php{{ php_version }}-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # Deny access to dot files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Status page for monitoring
+    location /nginx_status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        allow {{ ansible_default_ipv4.address }};
+        deny all;
+    }
+}
