@@ -1,0 +1,23 @@
+# Backup Automation Crontab Configuration
+# Add these lines to your root crontab with: sudo crontab -e
+
+# Daily backup at 2:00 AM
+0 2 * * * /usr/local/bin/backup.sh >> /var/log/backup/cron.log 2>&1
+
+# Rotate old backups every day at 3:00 AM
+0 3 * * * /usr/local/bin/backup-rotate.sh >> /var/log/backup/rotate.log 2>&1
+
+# Verify backups every day at 4:00 AM
+0 4 * * * /usr/local/bin/backup-verify.sh all >> /var/log/backup/verify.log 2>&1
+
+# Monitor backups every 6 hours
+0 */6 * * * /usr/local/bin/backup-monitoring.sh >> /var/log/backup/monitoring.log 2>&1
+
+# Weekly verification (Sunday at 3:00 AM)
+0 3 * * 0 /usr/local/bin/backup-verify.sh health >> /var/log/backup/health.log 2>&1
+
+# Monthly restore test (First Monday of month at 5:00 AM)
+0 5 1-7 * * [ $(date +%w) -eq 1 ] && /usr/local/bin/backup-verify.sh restore-test >> /var/log/backup/restore-test.log 2>&1
+
+# Cleanup old logs every month
+0 5 1 * * find /var/log/backup -name "*.log" -mtime +90 -delete
