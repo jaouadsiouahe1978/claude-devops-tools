@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: postgres
+  tag: "14-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5432
+  targetPort: 5432
+
+auth:
+  username: myapp_user
+  password: MySecurePassword123
+  database: myapp_db
+  secretName: db-credentials
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: standard
+  mountPath: /var/lib/postgresql/data
+  subPath: postgres
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+healthCheck:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: 7

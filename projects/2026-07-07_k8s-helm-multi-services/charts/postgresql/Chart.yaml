@@ -1,0 +1,10 @@
+apiVersion: v2
+name: postgresql
+description: PostgreSQL Database Service
+type: application
+version: 1.0.0
+appVersion: "14"
+keywords:
+  - database
+  - postgresql
+  - sql

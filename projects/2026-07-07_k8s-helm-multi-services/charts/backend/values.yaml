@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: node
+  tag: "16-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+env:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  API_PORT: 3000
+
+database:
+  host: postgresql
+  port: 5432
+  name: myapp_db
+  user: myapp_user
+  secretName: db-credentials
+  secretKey: password
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+healthCheck:
+  liveness:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: /ready
+    initialDelaySeconds: 10
+    periodSeconds: 5

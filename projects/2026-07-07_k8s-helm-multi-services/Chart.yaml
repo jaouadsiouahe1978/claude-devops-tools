@@ -1,0 +1,34 @@
+apiVersion: v2
+name: myapp-platform
+description: Application multi-services avec Kubernetes et Helm
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - kubernetes
+  - helm
+  - microservices
+  - multi-services
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+maintainers:
+  - name: Jaouad
+    email: jsinfo38@gmail.com
+dependencies:
+  - name: frontend
+    version: 1.0.0
+    repository: "file://./charts/frontend"
+    condition: frontend.enabled
+    tags:
+      - web
+  - name: backend
+    version: 1.0.0
+    repository: "file://./charts/backend"
+    condition: backend.enabled
+    tags:
+      - api
+  - name: postgresql
+    version: 1.0.0
+    repository: "file://./charts/postgresql"
+    condition: postgresql.enabled
+    tags:
+      - database

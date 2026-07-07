@@ -1,0 +1,30 @@
+1. Get the status of your deployment:
+  $ helm status myapp -n {{ .Values.global.namespace }}
+
+2. Check the pods:
+  $ kubectl get pods -n {{ .Values.global.namespace }}
+
+3. Access the frontend:
+  {{- if eq .Values.frontend.service.type "NodePort" }}
+  $ kubectl port-forward -n {{ .Values.global.namespace }} svc/myapp-frontend {{ .Values.frontend.service.nodePort }}:{{ .Values.frontend.service.port }}
+  Then visit: http://localhost:{{ .Values.frontend.service.nodePort }}
+  {{- else if eq .Values.frontend.service.type "LoadBalancer" }}
+  $ kubectl get svc -n {{ .Values.global.namespace }}
+  Then visit the external IP
+  {{- end }}
+
+4. Access the API:
+  $ kubectl port-forward -n {{ .Values.global.namespace }} svc/myapp-backend 3000:{{ .Values.backend.service.port }}
+  Then visit: http://localhost:3000
+
+5. Check database connectivity:
+  $ kubectl exec -it -n {{ .Values.global.namespace }} deployment/myapp-postgresql -- psql -U {{ .Values.postgresql.auth.username }} -d {{ .Values.postgresql.auth.database }}
+
+6. View logs:
+  $ kubectl logs -n {{ .Values.global.namespace }} -l app.kubernetes.io/instance=myapp --all-containers=true -f
+
+7. Upgrade the release:
+  $ helm upgrade myapp ./helm-charts -n {{ .Values.global.namespace }}
+
+8. Uninstall the release:
+  $ helm uninstall myapp -n {{ .Values.global.namespace }}

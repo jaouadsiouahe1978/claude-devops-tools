@@ -1,0 +1,71 @@
+# Test Environment Values
+global:
+  namespace: myapp-test
+  environment: test
+  labels:
+    app: myapp
+    version: "1.0"
+    env: test
+
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: nginx
+    tag: "alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    port: 80
+    targetPort: 80
+    nodePort: 30002
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: node
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  env:
+    NODE_ENV: test
+    LOG_LEVEL: info
+    API_PORT: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+postgresql:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: postgres
+    tag: "14-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: testuser
+    password: TestPassword2024
+    database: test_db
+    secretName: db-credentials
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClassName: standard
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
