@@ -1,0 +1,40 @@
+# Prometheus configuration
+
+global:
+  scrape_interval: 15s           # Default scrape interval
+  evaluation_interval: 15s       # Rules evaluation interval
+  external_labels:
+    monitor: 'devops-monitoring'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alert-rules.yml"
+
+# Scrape configs - targets à monitorer
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (métriques système)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor (métriques Docker)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Custom Exporter (métriques applicatives)
+  - job_name: 'custom-exporter'
+    static_configs:
+      - targets: ['custom-exporter:8888']
+    scrape_interval: 10s
