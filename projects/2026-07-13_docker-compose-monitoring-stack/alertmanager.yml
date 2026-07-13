@@ -1,0 +1,108 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: ''  # Add your Slack webhook URL here for notifications
+
+# Global default settings
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Root route with all parameters, which are inherited by child routes
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  routes:
+    # High priority route for critical alerts
+    - receiver: 'critical-team'
+      group_by: ['alertname', 'instance']
+      match:
+        severity: critical
+      group_wait: 0s
+      repeat_interval: 1h
+
+    # Medium priority route for warning alerts
+    - receiver: 'warning-team'
+      group_by: ['alertname']
+      match:
+        severity: warning
+      repeat_interval: 4h
+
+    # Match by job name
+    - receiver: 'database-team'
+      match:
+        job: 'mysql'
+
+    - receiver: 'frontend-team'
+      match:
+        job: 'web'
+
+# Inhibition rules to suppress alerts
+inhibit_rules:
+  # Suppress warning alerts if critical alert for same service exists
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+  # Suppress info alerts if warning alert for same service exists
+  - source_match:
+      severity: 'warning'
+    target_match:
+      severity: 'info'
+    equal: ['alertname', 'instance']
+
+  # Suppress all alerts for unavailable instance
+  - source_match:
+      alertname: 'InstanceDown'
+    target_match_re:
+      alertname: '.+'
+    equal: ['instance']
+
+# Receiver definitions
+receivers:
+  - name: 'default'
+    # Default to null receiver (no action)
+    null_receiver:
+
+  - name: 'critical-team'
+    # Email notifications for critical alerts
+    email_configs:
+      - to: 'critical-alerts@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'your-app-password'
+        send_resolved: true
+        headers:
+          Subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+
+  - name: 'warning-team'
+    # PagerDuty for warning alerts
+    pagerduty_configs:
+      - service_key: 'YOUR-SERVICE-KEY'
+        description: '{{ .GroupLabels.alertname }}: {{ .Alerts.Firing | len }} firing'
+        client: 'Alertmanager'
+        client_url: 'https://your-domain/alerting'
+
+  - name: 'database-team'
+    # Slack for database alerts
+    slack_configs:
+      - channel: '#database-alerts'
+        title: 'Database Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  - name: 'frontend-team'
+    # Slack for frontend alerts
+    slack_configs:
+      - channel: '#frontend-alerts'
+        title: 'Frontend Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  - name: 'webhook'
+    # Generic webhook for custom integrations
+    webhook_configs:
+      - url: 'http://localhost:5000/alerts'
+        send_resolved: true
