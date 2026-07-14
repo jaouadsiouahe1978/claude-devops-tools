@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "UserPromptSubmit": {
+      "description": "Prompt Guard - Intercepts and optimizes prompts to reduce token consumption",
+      "script": "prompt-guard.py",
+      "timeout": 2000,
+      "enabled": true
+    }
+  },
+  "permissions": {
+    "bash": ["allowed"],
+    "read": ["allowed"],
+    "edit": ["allowed"],
+    "write": ["allowed"],
+    "glob": ["allowed"],
+    "grep": ["allowed"]
+  }
+}
