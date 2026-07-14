@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  server1:
+    image: ubuntu:22.04
+    container_name: ansible_web1
+    hostname: server1
+    networks:
+      test_network:
+        ipv4_address: 172.20.0.10
+    ports:
+      - "8001:80"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo python3 && mkdir -p /run/sshd && /usr/sbin/sshd -D"
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+
+  server2:
+    image: ubuntu:22.04
+    container_name: ansible_web2
+    hostname: server2
+    networks:
+      test_network:
+        ipv4_address: 172.20.0.11
+    ports:
+      - "8002:80"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo python3 && mkdir -p /run/sshd && /usr/sbin/sshd -D"
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+
+  server3:
+    image: ubuntu:22.04
+    container_name: ansible_db1
+    hostname: server3
+    networks:
+      test_network:
+        ipv4_address: 172.20.0.20
+    ports:
+      - "5432:5432"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo python3 && mkdir -p /run/sshd && /usr/sbin/sshd -D"
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+
+networks:
+  test_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

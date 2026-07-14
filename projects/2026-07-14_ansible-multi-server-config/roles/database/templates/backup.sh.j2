@@ -1,0 +1,41 @@
+#!/bin/bash
+# PostgreSQL Automated Backup Script
+
+BACKUP_DIR="{{ backup_path }}"
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS={{ backup_retention_days }}
+HOSTNAME=$(hostname)
+
+# Create backup directory if not exists
+mkdir -p "$BACKUP_DIR"
+
+# Full database backup
+echo "Starting PostgreSQL backup at $(date)" >> "$BACKUP_DIR/backup.log"
+pg_dumpall | gzip > "$BACKUP_DIR/full_backup_$BACKUP_DATE.sql.gz"
+
+if [ $? -eq 0 ]; then
+    echo "Backup completed successfully: full_backup_$BACKUP_DATE.sql.gz" >> "$BACKUP_DIR/backup.log"
+else
+    echo "Backup failed at $(date)" >> "$BACKUP_DIR/backup.log"
+    exit 1
+fi
+
+# Individual database backups
+for db in $(psql -l -t | cut -d'|' -f1 | grep -v template | grep -v postgres | grep -v ' '); do
+    db=$(echo "$db" | xargs)
+    pg_dump "$db" | gzip > "$BACKUP_DIR/${db}_backup_$BACKUP_DATE.sql.gz"
+done
+
+# Clean up old backups
+echo "Cleaning up backups older than $RETENTION_DAYS days" >> "$BACKUP_DIR/backup.log"
+find "$BACKUP_DIR" -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+# Verify backup integrity
+echo "Verifying backup integrity" >> "$BACKUP_DIR/backup.log"
+for backup in "$BACKUP_DIR"/*.sql.gz; do
+    if ! gzip -t "$backup" 2>/dev/null; then
+        echo "ERROR: Corrupted backup: $backup" >> "$BACKUP_DIR/backup.log"
+    fi
+done
+
+echo "Backup process completed at $(date)" >> "$BACKUP_DIR/backup.log"

@@ -1,0 +1,25 @@
+---
+# Default variables for webserver role
+
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+nginx_keepalive_timeout: 65
+nginx_gzip_enabled: yes
+
+# Nginx sites configuration
+nginx_sites: []
+
+# SSL/TLS
+ssl_enabled: no
+ssl_cert_path: /etc/nginx/ssl/cert.pem
+ssl_key_path: /etc/nginx/ssl/key.pem
+
+# Performance
+nginx_cache_enabled: no
+nginx_cache_path: /var/cache/nginx
+
+# Logging
+nginx_access_log: /var/log/nginx/access.log
+nginx_error_log: /var/log/nginx/error.log
+nginx_log_format: combined

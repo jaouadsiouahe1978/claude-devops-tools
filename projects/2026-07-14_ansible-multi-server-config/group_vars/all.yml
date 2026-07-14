@@ -1,0 +1,50 @@
+---
+# Variables applied to all hosts
+
+# System configuration
+system_timezone: Europe/Paris
+system_ntp_enabled: yes
+system_ntp_servers:
+  - "0.debian.pool.ntp.org"
+  - "1.debian.pool.ntp.org"
+
+# SSH configuration
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_pubkey_authentication: "yes"
+
+# Package management
+package_state: present
+auto_update_enabled: yes
+auto_update_reboot: no
+
+# System packages to install on all hosts
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - dnsutils
+  - telnet
+  - python3-pip
+  - software-properties-common
+
+# Firewall
+firewall_enabled: yes
+firewall_rules_accept:
+  - "22/tcp"  # SSH
+
+# Monitoring
+enable_monitoring: yes
+monitoring_agent_version: "latest"
+
+# Logging
+syslog_enabled: yes
+log_retention_days: 30
+
+# Security
+security_updates: yes
+security_automatic_updates: yes

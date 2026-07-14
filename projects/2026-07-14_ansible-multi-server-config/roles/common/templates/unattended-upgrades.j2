@@ -1,0 +1,25 @@
+// Configuration for unattended-upgrades
+// Enables automatic security updates on Debian/Ubuntu systems
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// List of packages to NOT upgrade
+Unattended-Upgrade::Package-Blacklist {
+};
+
+// Enable automatic reboot if needed
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+
+// Mail report about upgrades
+Unattended-Upgrade::Mail "root@{{ inventory_hostname }}";
+Unattended-Upgrade::MailReport "on-change";
+
+// Remove unused kernel packages after upgrade
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::AutocleanInterval "7";

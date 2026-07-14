@@ -1,0 +1,37 @@
+---
+# Variables for webservers group
+
+# Nginx configuration
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+nginx_worker_rlimit_nofile: 65535
+nginx_keepalive_timeout: 65
+
+# Nginx sites
+nginx_sites:
+  - name: default
+    listen: 80
+    server_name: _
+    root: /var/www/html
+    index: index.html index.htm
+
+# SSL/TLS configuration (for future HTTPS setup)
+ssl_enabled: no
+ssl_cert_path: /etc/nginx/ssl
+ssl_key_path: /etc/nginx/ssl/key.pem
+ssl_cert_path: /etc/nginx/ssl/cert.pem
+
+# Performance tuning
+nginx_gzip_enabled: yes
+nginx_gzip_types: "text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json"
+nginx_cache_enabled: yes
+nginx_cache_path: /var/cache/nginx
+
+# Logging
+nginx_access_log: /var/log/nginx/access.log
+nginx_error_log: /var/log/nginx/error.log
+
+# Monitoring
+enable_nginx_stats: yes
+nginx_status_path: /nginx_status

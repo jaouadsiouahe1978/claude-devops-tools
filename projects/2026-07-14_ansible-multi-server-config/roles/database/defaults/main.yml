@@ -1,0 +1,35 @@
+---
+# Default variables for database role
+
+# PostgreSQL
+postgres_version: "14"
+postgres_port: 5432
+postgres_admin_user: postgres
+postgres_admin_password: ""
+
+# Databases and users
+postgres_databases: []
+postgres_users: []
+
+# Performance tuning
+postgres_max_connections: 100
+postgres_shared_buffers: "128MB"
+postgres_effective_cache_size: "512MB"
+postgres_work_mem: "2MB"
+postgres_maintenance_work_mem: "32MB"
+
+# Replication
+postgres_replication_enabled: no
+postgres_replication_user: replication
+postgres_replication_password: ""
+
+# Backup
+backup_enabled: no
+backup_path: /var/backups/postgresql
+backup_retention_days: 30
+
+# Logging
+postgres_log_min_duration_statement: 1000
+postgres_log_connections: yes
+postgres_log_disconnections: yes
+postgres_log_statement: all

@@ -1,0 +1,49 @@
+---
+# Variables for databases group
+
+# PostgreSQL configuration
+postgres_version: "14"
+postgres_port: 5432
+postgres_admin_user: postgres
+postgres_admin_password: "change_me_in_vault"  # Use Ansible Vault!
+
+# Database setup
+postgres_databases:
+  - name: production_db
+    encoding: UTF8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+
+# Database users
+postgres_users:
+  - name: app_user
+    password: "change_me_in_vault"  # Use Ansible Vault!
+    role_attr_flags: CREATEDB,NOCREATEUSER
+
+# PostgreSQL performance tuning
+postgres_max_connections: 200
+postgres_shared_buffers: "256MB"
+postgres_effective_cache_size: "1GB"
+postgres_work_mem: "4MB"
+postgres_maintenance_work_mem: "64MB"
+
+# Replication (optional for HA)
+postgres_replication_enabled: no
+postgres_replication_user: replication
+postgres_replication_password: "change_me_in_vault"
+
+# Backup configuration
+backup_enabled: yes
+backup_path: /var/backups/postgresql
+backup_retention_days: 30
+backup_schedule: "0 2 * * *"  # 2 AM daily
+
+# Logging
+postgres_log_directory: /var/log/postgresql
+postgres_log_min_duration_statement: 1000  # Log queries slower than 1 second
+postgres_log_connections: yes
+postgres_log_disconnections: yes
+
+# Monitoring
+enable_postgres_monitoring: yes
+postgres_stats_enabled: yes

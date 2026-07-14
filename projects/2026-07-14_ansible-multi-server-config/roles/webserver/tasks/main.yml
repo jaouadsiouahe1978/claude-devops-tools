@@ -1,0 +1,132 @@
+---
+# Webserver role tasks
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  tags: nginx
+  notify: restart nginx
+
+- name: Create SSL directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/nginx/ssl
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+  tags: nginx
+
+- name: Create Nginx cache directory
+  file:
+    path: "{{ nginx_cache_path }}"
+    state: directory
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0755'
+  when: nginx_cache_enabled
+  tags: nginx
+
+- name: Generate self-signed SSL certificate (if enabled and doesn't exist)
+  command: >
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048
+    -keyout {{ ssl_key_path }}
+    -out {{ ssl_cert_path }}
+    -subj "/C=FR/ST=Isere/L=Grenoble/O=DevOps/CN={{ inventory_hostname }}"
+  args:
+    creates: "{{ ssl_cert_path }}"
+  when: ssl_enabled
+  tags: ssl
+  notify: restart nginx
+
+- name: Configure Nginx main configuration
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+  tags: nginx
+  notify: restart nginx
+
+- name: Configure Nginx sites
+  template:
+    src: site.conf.j2
+    dest: "/etc/nginx/sites-available/{{ item.name }}.conf"
+  loop: "{{ nginx_sites }}"
+  when: nginx_sites | length > 0
+  tags: nginx
+  notify: restart nginx
+
+- name: Enable Nginx sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item.name }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ item.name }}.conf"
+    state: link
+  loop: "{{ nginx_sites }}"
+  when: nginx_sites | length > 0
+  tags: nginx
+  notify: restart nginx
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+  tags: nginx
+
+- name: Verify Nginx syntax
+  command: nginx -t
+  changed_when: false
+  tags: nginx
+
+- name: Create health check endpoint
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head><title>OK</title></head>
+      <body>
+        <h1>{{ inventory_hostname }} - OK</h1>
+        <p>Nginx is running on {{ ansible_date_time.iso8601 }}</p>
+      </body>
+      </html>
+    dest: /var/www/html/health.html
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+  tags: nginx
+
+- name: Configure Nginx monitoring
+  copy:
+    content: |
+      server {
+        listen 8080;
+        server_name localhost;
+        location /nginx_status {
+          stub_status on;
+          access_log off;
+          allow 127.0.0.1;
+          allow all;
+        }
+      }
+    dest: /etc/nginx/sites-available/monitoring.conf
+  tags: nginx
+  notify: restart nginx
+
+- name: Enable monitoring site
+  file:
+    src: /etc/nginx/sites-available/monitoring.conf
+    dest: /etc/nginx/sites-enabled/monitoring.conf
+    state: link
+  tags: nginx
+  notify: restart nginx
+
+- name: Display Nginx status
+  debug:
+    msg: |
+      Nginx installed and configured on {{ inventory_hostname }}
+      Version: {{ ansible_facts['packages']['nginx'][0]['version'] | default('installed') }}
+      Worker processes: {{ nginx_worker_processes }}
+      Status endpoint: http://{{ inventory_hostname }}:8080/nginx_status
+      Health check: http://{{ inventory_hostname }}/health.html
+  tags: always

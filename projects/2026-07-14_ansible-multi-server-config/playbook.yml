@@ -1,0 +1,42 @@
+---
+# Main playbook for infrastructure configuration
+# Usage:
+#   ansible-playbook playbook.yml
+#   ansible-playbook playbook.yml --tags common
+#   ansible-playbook playbook.yml --tags webserver
+#   ansible-playbook playbook.yml -l webservers
+
+- name: Configure Infrastructure
+  hosts: all
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display system information
+      debug:
+        msg: |
+          Configuring {{ inventory_hostname }}
+          OS: {{ ansible_os_family }} {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          Python: {{ ansible_python_version }}
+      tags: always
+
+  roles:
+    # Apply common role to all hosts
+    - role: common
+      tags: common
+
+    # Apply webserver role only to webservers group
+    - role: webserver
+      when: inventory_hostname in groups['webservers']
+      tags: webserver
+
+    # Apply database role only to databases group
+    - role: database
+      when: inventory_hostname in groups['databases']
+      tags: database
+
+  post_tasks:
+    - name: Configuration completed
+      debug:
+        msg: "Configuration of {{ inventory_hostname }} completed successfully!"
+      tags: always

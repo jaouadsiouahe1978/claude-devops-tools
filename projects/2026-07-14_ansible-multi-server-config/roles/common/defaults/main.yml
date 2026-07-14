@@ -1,0 +1,31 @@
+---
+# Default variables for common role
+
+# System
+system_timezone: UTC
+system_ntp_enabled: yes
+system_hostname_manage: no
+
+# SSH
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+
+# Packages
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - python3-pip
+
+# Users
+manage_users: no
+
+# Firewall
+firewall_enabled: no
+
+# Monitoring
+enable_monitoring: no
