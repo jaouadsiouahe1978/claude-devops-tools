@@ -26,3 +26,10 @@ secrets/
 
 # OS
 .DS_Store
+
+# Monitoring & Logs
+**/logs/*.log
+**/logs/report-*.txt
+**/logs/report-*.html
+**/data/baseline-metrics.txt
+**/data/alert-history.log
