@@ -1,0 +1,41 @@
+# Sudoers configuration for advanced permission scenarios
+# IMPORTANT: Always edit with 'visudo' to prevent syntax errors
+# This file is for reference - use setup_sudo.sh to apply safely
+
+# Allow users in webapp group to restart nginx (with password)
+%webapp ALL=(root) /usr/sbin/systemctl restart nginx
+
+# Allow devops group full control over services (without password for automation)
+%devops ALL=(root) NOPASSWD: /usr/sbin/systemctl start *, /usr/sbin/systemctl stop *, /usr/sbin/systemctl restart *
+
+# Allow developers to restart their application only
+%developer ALL=(root) NOPASSWD: /usr/sbin/systemctl restart myapp
+
+# Alice can edit webapp config without password
+alice ALL=(root) NOPASSWD: /usr/bin/nano /opt/test_permissions/webapp/config.php, /usr/bin/vim /opt/test_permissions/webapp/config.php
+
+# Diana (senior devops) can do everything without password
+diana ALL=(ALL) NOPASSWD: ALL
+
+# Eve (junior developer) can only read logs without password
+eve ALL=(root) NOPASSWD: /usr/bin/tail -f /var/log/application.log, /usr/bin/journalctl -u myapp -f
+
+# Charlie can deploy without password
+charlie ALL=(root) NOPASSWD: /opt/test_permissions/devops/deploy.sh
+
+# Bob can backup without password
+bob ALL=(root) NOPASSWD: /usr/bin/tar, /usr/bin/rsync
+
+# Generic: allow all to use sudo -i to change password without root password
+Defaults use_pty
+
+# Logging
+Defaults log_file="/var/log/sudo.log"
+Defaults!/usr/bin/sudoedit !authenticate
+
+# Security settings
+Defaults env_reset
+Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults requiretty
+Defaults passwd_timeout=0
+Defaults timestamp_timeout=5
