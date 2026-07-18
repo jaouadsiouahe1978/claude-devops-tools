@@ -1,0 +1,46 @@
+# Development environment values
+global:
+  environment: dev
+  domain: myapp-dev.local
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+  hosts:
+    - host: myapp-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+
+config:
+  LOG_LEVEL: "DEBUG"
+  APP_MODE: "development"
+  DEBUG: "true"
+
+podDisruptionBudget:
+  enabled: false

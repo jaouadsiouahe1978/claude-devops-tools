@@ -1,0 +1,34 @@
+# Patterns to ignore when building packages.
+# This supports shell glob patterns, relative paths, and negated patterns
+# (prefixed with '!') to make exceptions.
+#
+# A location's contents will be serialized and included in that location's
+# files list. By default, files ending in .yaml, .yml, .json, .txt and .md
+# are included, and directories ending in charts, templates, templates.*,
+# and those starting with a dot are excluded.
+
+.git/
+.gitignore
+.gitattributes
+.svn
+.bzr
+.hg
+.lock
+.DS_Store
+*.swp
+*.swo
+*~
+*.orig
+*.bak
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.env
+.envrc
+
+# Specific to this project
+scripts/
+.github/
+README_*.md

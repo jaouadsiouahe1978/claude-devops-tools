@@ -1,0 +1,19 @@
+apiVersion: v2
+name: myapp
+description: Multi-tier application Helm chart for multiple environments
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - kubernetes
+  - helm
+  - deployment
+  - multi-environment
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+sources:
+  - https://github.com/jaouadsiouahe1978/claude-devops-tools
+maintainers:
+  - name: Jaouad
+    email: jaouad@example.com
+    url: https://github.com/jaouadsiouahe1978
+icon: https://cdn.jsdelivr.net/gh/kubernetes/kubernetes/logo/logo.svg
