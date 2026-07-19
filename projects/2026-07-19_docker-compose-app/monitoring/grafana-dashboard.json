@@ -1,0 +1,134 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "devops-app-dashboard",
+    "title": "DevOps Multi-Container App",
+    "tags": ["docker", "compose", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 0,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Requests Rate",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{route}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Duration",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 {{method}} {{route}}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Active Connections",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job='backend'}"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status_code=~'5..'}[5m])"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Service Health",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "up{job='backend'}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Node.js Memory Usage",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job='backend'} / 1024 / 1024",
+            "legendFormat": "{{job}} - RSS"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Request Count by Status",
+        "type": "piechart",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(http_requests_total[5m])) by (status_code)"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}
