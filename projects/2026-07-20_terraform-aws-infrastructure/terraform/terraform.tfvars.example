@@ -1,0 +1,16 @@
+# AWS Configuration
+aws_region  = "eu-west-1"  # Change according to your region
+environment = "dev"
+
+# Application Configuration
+app_name      = "myapp"
+instance_type = "t3.micro"
+
+# Database Configuration
+database_name     = "myapp_db"
+database_username = "admin"
+database_password = "ChangeMe123!"  # IMPORTANT: Change this password!
+
+# RDS Configuration
+rds_allocated_storage = 20
+rds_instance_class    = "db.t3.micro"
