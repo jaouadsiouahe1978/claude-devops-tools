@@ -1,0 +1,73 @@
+{{- if .Values.nodeExporter.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+        {{- toYaml .Values.labels | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.nodeExporter.service.port }}"
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      containers:
+        - name: node-exporter
+          image: "{{ .Values.nodeExporter.image.repository }}:{{ .Values.nodeExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeExporter.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.nodeExporter.service.targetPort }}
+              hostPort: {{ .Values.nodeExporter.service.targetPort }}
+              name: metrics
+          args:
+            - '--path.procfs=/host/proc'
+            - '--path.sysfs=/host/sys'
+            - '--path.rootfs=/rootfs'
+            - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+            - '--collector.netclass.ignored-devices=^(veth.*|br-.*|docker.*|virbr.*|lo)'
+            - '--collector.netdev.device-exclude=^(veth.*|br-.*|docker.*|virbr.*|lo)'
+
+          resources:
+            {{- toYaml .Values.nodeExporter.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+
+          securityContext:
+            privileged: true
+
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: rootfs
+          hostPath:
+            path: /
+{{- end }}

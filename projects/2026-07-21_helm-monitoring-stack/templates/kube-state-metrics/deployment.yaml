@@ -1,0 +1,57 @@
+{{- if .Values.kubeStateMetrics.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    app: kube-state-metrics
+spec:
+  replicas: {{ .Values.kubeStateMetrics.replicaCount }}
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+        {{- toYaml .Values.labels | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.kubeStateMetrics.service.port }}"
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: kube-state-metrics
+          image: "{{ .Values.kubeStateMetrics.image.repository }}:{{ .Values.kubeStateMetrics.image.tag }}"
+          imagePullPolicy: {{ .Values.kubeStateMetrics.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.kubeStateMetrics.service.targetPort }}
+              name: metrics
+
+          resources:
+            {{- toYaml .Values.kubeStateMetrics.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.kubeStateMetrics.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.kubeStateMetrics.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+      securityContext:
+        runAsUser: 65534
+        runAsNonRoot: true
+{{- end }}

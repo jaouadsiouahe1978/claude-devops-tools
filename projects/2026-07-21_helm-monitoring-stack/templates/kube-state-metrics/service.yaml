@@ -1,0 +1,19 @@
+{{- if .Values.kubeStateMetrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    app: kube-state-metrics
+spec:
+  type: {{ .Values.kubeStateMetrics.service.type }}
+  ports:
+    - port: {{ .Values.kubeStateMetrics.service.port }}
+      targetPort: {{ .Values.kubeStateMetrics.service.targetPort }}
+      protocol: TCP
+      name: metrics
+  selector:
+    app: kube-state-metrics
+{{- end }}

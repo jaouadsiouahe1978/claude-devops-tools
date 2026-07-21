@@ -1,0 +1,53 @@
+# Production Environment Overrides
+# Usage: helm install monitoring . -f values-prod.yaml
+
+prometheus:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  retention:
+    time: "30d"
+    size: "1Gi"
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: "fast-ssd"
+
+grafana:
+  replicaCount: 2
+  adminPassword: "ChangeMe123!@#"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: "fast-ssd"
+
+nodeExporter:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+kubeStateMetrics:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

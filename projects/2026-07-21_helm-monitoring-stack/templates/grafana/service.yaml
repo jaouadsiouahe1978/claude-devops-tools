@@ -1,0 +1,19 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    app: grafana
+spec:
+  type: {{ .Values.grafana.service.type }}
+  ports:
+    - port: {{ .Values.grafana.service.port }}
+      targetPort: {{ .Values.grafana.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: grafana
+{{- end }}

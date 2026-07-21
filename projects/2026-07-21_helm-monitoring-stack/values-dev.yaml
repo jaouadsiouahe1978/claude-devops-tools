@@ -1,0 +1,46 @@
+# Development Environment Overrides
+# Usage: helm install monitoring . -f values-dev.yaml
+
+prometheus:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  retention:
+    time: "7d"
+    size: "256MB"
+  persistence:
+    enabled: false
+
+grafana:
+  adminPassword: dev123
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    enabled: false
+
+nodeExporter:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+kubeStateMetrics:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi

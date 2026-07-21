@@ -1,0 +1,19 @@
+{{- if .Values.nodeExporter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+    app: node-exporter
+spec:
+  type: {{ .Values.nodeExporter.service.type }}
+  ports:
+    - port: {{ .Values.nodeExporter.service.port }}
+      targetPort: {{ .Values.nodeExporter.service.targetPort }}
+      protocol: TCP
+      name: metrics
+  selector:
+    app: node-exporter
+{{- end }}
