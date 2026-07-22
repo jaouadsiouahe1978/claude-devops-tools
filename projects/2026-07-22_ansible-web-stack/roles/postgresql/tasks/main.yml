@@ -1,0 +1,85 @@
+---
+- name: Add PostgreSQL repository key
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+
+- name: Add PostgreSQL repository
+  apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: present
+
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql-{{ postgres_version }}
+      - postgresql-contrib-{{ postgres_version }}
+      - python3-psycopg2
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL is started and enabled
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+    regexp: "^listen_addresses"
+    line: "listen_addresses = '{{ postgres_listen_address }}'"
+    state: present
+  notify: restart postgresql
+
+- name: Configure PostgreSQL pg_hba.conf for local connections
+  lineinfile:
+    path: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
+    line: "host    all             all             0.0.0.0/0               md5"
+    insertbefore: "^# IPv4 local connections"
+    state: present
+  notify: restart postgresql
+
+- name: Create application database user
+  postgresql_user:
+    name: "{{ postgres_app_user }}"
+    password: "{{ postgres_app_password }}"
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Create application database
+  postgresql_db:
+    name: "{{ postgres_db_name }}"
+    owner: "{{ postgres_app_user }}"
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Grant privileges to app user
+  postgresql_privs:
+    database: "{{ postgres_db_name }}"
+    roles: "{{ postgres_app_user }}"
+    privs: ALL
+    objs: ALL_IN_SCHEMA
+    schema: public
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Initialize sample database schema
+  postgresql_query:
+    db: "{{ postgres_db_name }}"
+    login_user: "{{ postgres_app_user }}"
+    login_password: "{{ postgres_app_password }}"
+    port: "{{ postgres_port }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+  become: yes
+  become_user: postgres
+  ignore_errors: yes

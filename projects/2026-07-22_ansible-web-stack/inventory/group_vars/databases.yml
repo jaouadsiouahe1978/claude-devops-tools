@@ -1,0 +1,9 @@
+---
+postgres_version: 14
+postgres_user: postgres
+postgres_password: SecureDbPassword123
+postgres_db_name: app_db
+postgres_app_user: appuser
+postgres_app_password: AppUserPassword123
+postgres_port: 5432
+postgres_listen_address: "*"
