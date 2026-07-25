@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx-ssl
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - certbot
+    networks:
+      - ssl-network
+    restart: unless-stopped
+
+  certbot:
+    build:
+      context: ./certbot
+      dockerfile: Dockerfile
+    container_name: certbot-renewer
+    volumes:
+      - ./certs:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/renewal-hook.sh:/renewal-hook.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - EMAIL=admin@example.com
+      - DOMAINS=example.com,www.example.com,api.example.com
+      - RENEWAL_INTERVAL=86400
+    networks:
+      - ssl-network
+    restart: unless-stopped
+
+  monitoring:
+    build:
+      context: ./monitoring
+      dockerfile: Dockerfile
+    container_name: cert-monitor
+    volumes:
+      - ./certs:/etc/letsencrypt:ro
+      - ./monitoring/check-certs.sh:/check-certs.sh:ro
+      - ./config/alert-config.env:/alert-config.env:ro
+    environment:
+      - ALERT_DAYS=30
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+    networks:
+      - ssl-network
+    restart: unless-stopped
+
+networks:
+  ssl-network:
+    driver: bridge
