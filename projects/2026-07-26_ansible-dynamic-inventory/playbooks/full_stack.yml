@@ -1,0 +1,85 @@
+---
+# Playbook: Déployer la stack complète (web + db + monitoring)
+
+- name: Orchestrer le déploiement complet
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Afficher les informations de déploiement
+      debug:
+        msg: |
+          ╔════════════════════════════════════════════════════════════╗
+          ║         Déploiement Full Stack - Ansible                   ║
+          ╚════════════════════════════════════════════════════════════╝
+
+          Inventaire: {{ groups.all | length }} serveurs
+          - Web servers: {{ groups.webservers | length }}
+          - DB servers: {{ groups.dbservers | length }}
+          - Monitoring: {{ groups.monitoring | length }}
+
+- name: Phase 1 - Déployer les serveurs de base de données
+  import_playbook: deploy_db.yml
+  tags:
+    - phase_1
+    - database
+
+- name: Phase 2 - Déployer les serveurs web
+  import_playbook: deploy_web.yml
+  tags:
+    - phase_2
+    - webservers
+
+- name: Phase 3 - Vérifications post-déploiement
+  hosts: all
+  gather_facts: no
+  become: yes
+
+  tasks:
+    - name: Vérifier les services
+      service_facts:
+      register: services
+
+    - name: Afficher le statut des services
+      debug:
+        msg: |
+          Serveur: {{ inventory_hostname }}
+          Services actifs: {{ services.ansible_facts.services.keys() | length }}
+
+    - name: Vérifier l'espace disque
+      shell: df -h / | tail -1
+      register: disk_usage
+      changed_when: false
+
+    - name: Afficher l'utilisation disque
+      debug:
+        msg: "{{ disk_usage.stdout }}"
+
+  tags:
+    - phase_3
+    - verification
+
+- name: Phase 4 - Rapport final
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Résumé du déploiement
+      debug:
+        msg: |
+          ╔════════════════════════════════════════════════════════════╗
+          ║              Déploiement Complété avec Succès              ║
+          ╚════════════════════════════════════════════════════════════╝
+
+          ✓ Serveurs web:        {{ groups.webservers | length }}
+          ✓ Serveurs DB:         {{ groups.dbservers | length }}
+          ✓ Services monitoring: {{ groups.monitoring | length }}
+
+          Prochaines étapes:
+          1. Vérifier les services: systemctl status nginx postgresql
+          2. Tester la connectivité: curl http://web1.example.com
+          3. Monitorer les métriques: Prometheus sur port 9090
+
+  tags:
+    - phase_4
+    - summary

@@ -1,0 +1,76 @@
+---
+# Playbook: Déployer une base de données PostgreSQL
+
+- name: Déployer les serveurs de base de données
+  hosts: dbservers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Valider les pré-requis
+      assert:
+        that:
+          - ansible_os_family == "Debian"
+          - ansible_python_version is version('3.6', '>=')
+        fail_msg: "DB Server doit être sur Debian avec Python 3.6+"
+      tags:
+        - always
+
+    - name: Afficher les variables de groupe
+      debug:
+        msg: |
+          Database: {{ db_name }}
+          User: {{ db_user }}
+          Port: {{ postgres_port }}
+        verbosity: 1
+      tags:
+        - always
+
+  roles:
+    - role: common
+      tags:
+        - common
+        - always
+
+    - role: database
+      tags:
+        - database
+        - postgres
+
+    - role: monitoring
+      tags:
+        - monitoring
+
+  post_tasks:
+    - name: Vérifier que PostgreSQL écoute
+      wait_for:
+        host: localhost
+        port: "{{ postgres_port }}"
+        delay: 10
+        timeout: 30
+      tags:
+        - always
+
+    - name: Lister les bases de données
+      postgresql_query:
+        db: postgres
+        query: "SELECT datname FROM pg_database WHERE datistemplate = false"
+      become_user: postgres
+      register: db_list
+      tags:
+        - always
+
+    - name: Afficher les bases existantes
+      debug:
+        msg: "Bases de données: {{ db_list.query_result | map(attribute='datname') | list }}"
+      tags:
+        - always
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  handlers:
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
+        state: restarted

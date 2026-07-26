@@ -1,0 +1,14 @@
+---
+# Handlers pour le rôle database
+
+- name: Restart PostgreSQL
+  service:
+    name: postgresql
+    state: restarted
+  listen: Restart PostgreSQL
+
+- name: Reload PostgreSQL
+  service:
+    name: postgresql
+    state: reloaded
+  listen: Reload PostgreSQL

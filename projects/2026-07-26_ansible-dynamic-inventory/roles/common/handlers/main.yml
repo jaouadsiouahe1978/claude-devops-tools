@@ -1,0 +1,21 @@
+---
+# Handlers pour le rôle common
+
+- name: Reboot system
+  reboot:
+    msg: "Rebooting triggered by Ansible"
+    connect_timeout: 5
+    reboot_timeout: 300
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+  listen: reboot system
+
+- name: Reload sysctl
+  command: sysctl -p
+  listen: reload sysctl
+
+- name: Restart NTP
+  service:
+    name: chrony
+    state: restarted
+  listen: restart ntp

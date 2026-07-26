@@ -1,0 +1,41 @@
+---
+# Variables globales pour tous les serveurs
+
+# Paramètres de connectivité SSH
+ansible_connection: ssh
+ansible_port: 22
+ansible_user: ansible
+ansible_become: true
+ansible_become_method: sudo
+ansible_python_interpreter: /usr/bin/python3
+
+# Timeouts
+ansible_timeout: 30
+ansible_command_timeout: 30
+ansible_connect_timeout: 30
+
+# Facteurs de cache
+gather_subset: '!hardware'
+gather_timeout: 20
+
+# Paramètres de sécurité
+disable_ipv6: false
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+  - 3.pool.ntp.org
+
+# Paramètres de système de fichiers
+filesystem_type: ext4
+
+# Paramètres de sécurité SSH
+ssh_port: 22
+ssh_permit_root_login: no
+ssh_password_authentication: no
+ssh_pubkey_authentication: yes
+
+# Informations générales
+organization: "DevOps Training"
+project_name: "ansible-dynamic-inventory"
+environment: "production"
