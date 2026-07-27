@@ -1,0 +1,119 @@
+# Global settings
+namespace: default
+
+# PostgreSQL Configuration
+postgres:
+  enabled: true
+  image: postgres:15-alpine
+  replicas: 1
+  port: 5432
+  username: postgres
+  password: secure_postgres_pass_123
+  database: app_db
+  storage:
+    size: 10Gi
+    storageClassName: standard
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+
+# Redis Configuration
+redis:
+  enabled: true
+  image: redis:7-alpine
+  replicas: 1
+  port: 6379
+  storage:
+    size: 5Gi
+    storageClassName: standard
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  persistence:
+    enabled: true
+
+# Backend App Configuration
+app:
+  enabled: true
+  name: app-backend
+  image: node:18-alpine
+  imageRepository: ghcr.io/jaouadsiouahe1978/backend-app
+  imageTag: "1.0.0"
+  replicas: 3
+  port: 3000
+  env:
+    DB_HOST: postgres-service
+    DB_PORT: "5432"
+    DB_USER: postgres
+    DB_PASSWORD: secure_postgres_pass_123
+    DB_NAME: app_db
+    REDIS_HOST: redis-service
+    REDIS_PORT: "6379"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: false
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# Service Configuration
+service:
+  app:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  postgres:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  redis:
+    type: ClusterIP
+    port: 6379
+    targetPort: 6379
+
+# Ingress Configuration (optional)
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-tls
+      hosts:
+        - app.example.com
+
+# Probes
+healthCheck:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3

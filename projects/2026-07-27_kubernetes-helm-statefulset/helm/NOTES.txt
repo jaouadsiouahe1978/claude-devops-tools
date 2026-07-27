@@ -1,0 +1,45 @@
+========================================
+Multi-Stack Helm Chart - Installation OK
+========================================
+
+📊 Services déployés:
+  • PostgreSQL StatefulSet: postgres-service:5432
+  • Redis StatefulSet: redis-service:6379
+  • Backend App Deployment: app-service:3000
+
+🚀 Commandes utiles:
+
+1. Port Forwarding (accès local):
+   kubectl port-forward svc/app-service 3000:3000
+   kubectl port-forward svc/postgres-service 5432:5432
+   kubectl port-forward svc/redis-service 6379:6379
+
+2. Logs:
+   kubectl logs -f deployment/app-backend
+   kubectl logs -f statefulset/postgres
+   kubectl logs -f statefulset/redis
+
+3. Exécuter des commandes:
+   kubectl exec -it postgres-0 -- psql -U postgres -d app_db
+   kubectl exec -it redis-0 -- redis-cli
+
+4. Vérifier le status:
+   kubectl get all
+   kubectl top pods
+   kubectl describe statefulset postgres
+   kubectl describe statefulset redis
+   kubectl describe deployment app-backend
+
+5. Mettre à jour le chart:
+   helm upgrade my-stack ./multi-stack-chart -f values.yaml
+
+6. Supprimer le déploiement:
+   helm uninstall my-stack
+
+✅ Prochaines étapes:
+   • Configurer le Ingress pour accès externe
+   • Ajouter la persistance de volume cloud
+   • Configurer les HPA (Horizontal Pod Autoscaler)
+   • Mettre en place le monitoring Prometheus
+
+Pour plus d'infos: https://github.com/jaouadsiouahe1978/claude-devops-tools
