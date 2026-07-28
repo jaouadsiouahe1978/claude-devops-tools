@@ -1,0 +1,43 @@
+---
+# Variables communes pour le groupe 'dbservers'
+
+# Packages
+packages_to_install:
+  - postgresql
+  - postgresql-contrib
+  - postgresql-client
+  - git
+  - curl
+
+# Configuration PostgreSQL
+postgres_version: "15"
+postgres_user: postgres
+postgres_data_dir: /var/lib/postgresql/15/main
+postgres_port: 5432
+
+# Database
+db_name: production
+db_user: appuser
+db_user_password: "{{ vault_db_password }}" # À chiffrer avec ansible-vault
+
+# Backup
+backup_enabled: true
+backup_schedule: "0 2 * * *"  # 02h00 chaque jour
+backup_retention_days: 7
+backup_path: /var/backups/postgresql
+
+# Replication
+replication_enabled: false
+replication_slot: primary_slot
+standby_servers: []
+
+# Performance tuning
+shared_buffers: "256MB"
+effective_cache_size: "1GB"
+maintenance_work_mem: "64MB"
+checkpoint_completion_target: 0.9
+max_connections: 100
+
+# Monitoring
+enable_monitoring: true
+prometheus_port: 9187

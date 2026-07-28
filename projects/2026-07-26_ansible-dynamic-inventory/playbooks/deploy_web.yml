@@ -1,0 +1,63 @@
+---
+# Playbook: Déployer une infrastructure web complète
+
+- name: Déployer les serveurs web
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Valider les pré-requis
+      assert:
+        that:
+          - ansible_os_family in ['Debian', 'RedHat']
+          - ansible_python_version is version('3.6', '>=')
+        fail_msg: "OS ou Python non supporté"
+      tags:
+        - always
+
+  roles:
+    - role: common
+      tags:
+        - common
+        - always
+
+    - role: webserver
+      tags:
+        - webserver
+        - nginx
+
+    - role: monitoring
+      tags:
+        - monitoring
+
+  post_tasks:
+    - name: Vérifier le statut de Nginx
+      service_facts:
+      register: service_facts
+      tags:
+        - always
+
+    - name: Afficher le statut
+      debug:
+        msg: "Nginx status: {{ service_facts.ansible_facts.services['nginx.service'].state }}"
+      tags:
+        - always
+
+    - name: Tester la connectivité HTTP
+      uri:
+        url: "http://{{ inventory_hostname }}/health"
+        status_code: 200
+      ignore_errors: yes
+      tags:
+        - always
+
+  handlers:
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+  vars:
+    # Surcharges locales si nécessaires
+    packages_to_install: "{{ packages_to_install | default([]) }}"

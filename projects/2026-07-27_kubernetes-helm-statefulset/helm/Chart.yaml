@@ -1,0 +1,16 @@
+apiVersion: v2
+name: multi-stack
+description: Multi-service stack with Helm, PostgreSQL, Redis, and App Backend
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - helm
+  - statefulset
+  - postgresql
+  - redis
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+maintainers:
+  - name: Jaouad
+    email: jsinfo38@gmail.com

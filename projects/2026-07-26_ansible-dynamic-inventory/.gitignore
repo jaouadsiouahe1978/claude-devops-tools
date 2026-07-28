@@ -1,0 +1,15 @@
+*.pyc
+__pycache__/
+.env
+.vault-pass
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+.fact_cache/
+*.retry
+/tmp/
+/build/
+/dist/
+*.egg-info/

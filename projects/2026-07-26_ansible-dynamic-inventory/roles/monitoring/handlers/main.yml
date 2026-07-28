@@ -1,0 +1,15 @@
+---
+# Handlers pour le rôle monitoring
+
+- name: Restart node_exporter
+  systemd:
+    name: node_exporter
+    state: restarted
+    daemon_reload: yes
+  listen: Restart node_exporter
+
+- name: Restart rsyslog
+  service:
+    name: rsyslog
+    state: restarted
+  listen: Restart rsyslog

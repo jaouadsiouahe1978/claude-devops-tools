@@ -1,0 +1,131 @@
+---
+# Rôle database - Installation et configuration PostgreSQL
+
+- name: Ajouter la clé GPG PostgreSQL
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - postgres
+    - database
+
+- name: Ajouter le dépôt PostgreSQL
+  apt_repository:
+    repo: deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - postgres
+    - database
+
+- name: Installer PostgreSQL
+  package:
+    name:
+      - postgresql-{{ postgres_version }}
+      - postgresql-contrib-{{ postgres_version }}
+      - postgresql-client-{{ postgres_version }}
+    state: present
+  tags:
+    - postgres
+    - database
+
+- name: Démarrer et activer PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+  tags:
+    - postgres
+    - database
+
+- name: Créer la base de données
+  postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+  become_user: postgres
+  tags:
+    - postgres
+    - database
+
+- name: Créer l'utilisateur PostgreSQL
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_user_password }}"
+    db: "{{ db_name }}"
+    role_attr_flags: CREATEDB,NOCREATEROLE
+    state: present
+  become_user: postgres
+  no_log: true
+  tags:
+    - postgres
+    - database
+
+- name: Accorder les privilèges
+  postgresql_privs:
+    database: "{{ db_name }}"
+    objs: ALL_IN_SCHEMA
+    privs: SELECT,INSERT,UPDATE,DELETE
+    role: "{{ db_user }}"
+    type: table
+    schema: public
+  become_user: postgres
+  tags:
+    - postgres
+    - database
+
+- name: Configurer PostgreSQL postgresql.conf
+  template:
+    src: postgresql.conf.j2
+    dest: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    backup: yes
+  notify: Restart PostgreSQL
+  tags:
+    - postgres
+    - database
+    - config
+
+- name: Configurer PostgreSQL pg_hba.conf
+  template:
+    src: pg_hba.conf.j2
+    dest: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    backup: yes
+  notify: Restart PostgreSQL
+  tags:
+    - postgres
+    - database
+    - config
+
+- name: Créer le répertoire de backup
+  file:
+    path: "{{ backup_path }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+  when: backup_enabled
+  tags:
+    - backup
+    - postgres
+
+- name: Configurer le backup automatique
+  cron:
+    name: PostgreSQL backup
+    minute: "0"
+    hour: "2"
+    job: "pg_dump -U postgres {{ db_name }} | gzip > {{ backup_path }}/{{ db_name }}_$(date +\\%Y\\%m\\%d).sql.gz"
+    user: postgres
+  when: backup_enabled
+  tags:
+    - backup
+    - postgres
+
+- name: Ouvrir le port PostgreSQL dans le firewall
+  ufw:
+    rule: allow
+    port: '{{ postgres_port }}'
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - postgres

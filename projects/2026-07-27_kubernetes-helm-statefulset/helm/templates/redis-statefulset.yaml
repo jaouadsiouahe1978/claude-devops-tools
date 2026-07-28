@@ -1,0 +1,88 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: redis
+    version: {{ .Chart.Version }}
+spec:
+  serviceName: redis-service
+  replicas: {{ .Values.redis.replicas }}
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redis.image }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: {{ .Values.redis.port }}
+          protocol: TCP
+        command:
+          - redis-server
+          - "--appendonly"
+          - "yes"
+          - "--appendfsync"
+          - "everysec"
+
+        resources:
+          requests:
+            memory: {{ .Values.redis.resources.requests.memory }}
+            cpu: {{ .Values.redis.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.redis.resources.limits.memory }}
+            cpu: {{ .Values.redis.resources.limits.cpu }}
+
+        {{- if .Values.healthCheck.liveness.enabled }}
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.redis.port }}
+          initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
+        {{- end }}
+
+        {{- if .Values.healthCheck.readiness.enabled }}
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
+        {{- end }}
+
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "redis-cli shutdown"]
+
+  {{- if .Values.redis.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-storage
+      labels:
+        app: redis
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.redis.storage.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.redis.storage.size }}
+  {{- end }}
+{{- end }}

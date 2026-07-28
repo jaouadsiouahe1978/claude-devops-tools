@@ -1,0 +1,129 @@
+---
+# Rôle common - Tâches communes à tous les serveurs
+
+- name: Mettre à jour les packages (apt)
+  apt:
+    update_cache: yes
+    upgrade: dist
+  when: ansible_os_family == "Debian"
+  tags:
+    - packages
+    - updates
+
+- name: Mettre à jour les packages (yum)
+  yum:
+    name: '*'
+    state: latest
+  when: ansible_os_family == "RedHat"
+  tags:
+    - packages
+    - updates
+
+- name: Installer les packages de base
+  package:
+    name: "{{ packages_to_install | default([]) }}"
+    state: present
+  tags:
+    - packages
+
+- name: Configurer le hostname
+  hostname:
+    name: "{{ inventory_hostname_short }}"
+  tags:
+    - system
+
+- name: Configurer NTP
+  block:
+    - name: Installer chrony
+      package:
+        name: chrony
+        state: present
+
+    - name: Démarrer et activer chrony
+      service:
+        name: chrony
+        state: started
+        enabled: yes
+  tags:
+    - ntp
+    - system
+
+- name: Créer les utilisateurs standard
+  user:
+    name: "{{ item.name }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    groups: "{{ item.groups | default('') }}"
+    createhome: yes
+    state: present
+  loop:
+    - name: ansible
+      shell: /bin/bash
+      groups: sudo
+    - name: devops
+      shell: /bin/bash
+      groups: sudo
+  tags:
+    - users
+
+- name: Configurer sudo sans mot de passe pour ansible
+  lineinfile:
+    path: /etc/sudoers.d/ansible
+    line: "ansible ALL=(ALL) NOPASSWD:ALL"
+    create: yes
+    mode: '0440'
+  tags:
+    - sudo
+    - users
+
+- name: Configurer SELinux/AppArmor (optionnel)
+  block:
+    - name: Désactiver SELinux (optionnel)
+      selinux:
+        state: disabled
+      when: ansible_os_family == "RedHat"
+
+    - name: Reboot si SELinux désactivé
+      reboot:
+      when: ansible_os_family == "RedHat" and ansible_selinux.status is defined
+  tags:
+    - security
+
+- name: Configurer firewall (UFW pour Debian)
+  ufw:
+    state: enabled
+    direction: incoming
+    policy: deny
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - security
+
+- name: Définir la limite de fichiers ouverts
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "* soft nofile 65535"
+    - "* hard nofile 65535"
+    - "* soft nproc 65535"
+    - "* hard nproc 65535"
+  tags:
+    - system
+    - tuning
+
+- name: Activer IPv4 forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+  tags:
+    - system
+    - network
+
+- name: Configurer l'horloge système
+  timezone:
+    name: UTC
+  tags:
+    - system
+    - time

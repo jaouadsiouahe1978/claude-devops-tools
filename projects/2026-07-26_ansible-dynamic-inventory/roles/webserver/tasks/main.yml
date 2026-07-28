@@ -1,0 +1,109 @@
+---
+# Rôle webserver - Installation et configuration Nginx
+
+- name: Installer Nginx
+  package:
+    name: nginx
+    state: present
+  tags:
+    - nginx
+    - webserver
+
+- name: Créer le répertoire de configuration Nginx personnalisé
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    mode: '0755'
+  tags:
+    - nginx
+    - webserver
+
+- name: Configurer Nginx (main config)
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+  notify: Restart nginx
+  tags:
+    - nginx
+    - webserver
+
+- name: Configurer vhost par défaut
+  template:
+    src: default_vhost.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+    backup: yes
+  notify: Restart nginx
+  tags:
+    - nginx
+    - webserver
+
+- name: Créer le répertoire webroot
+  file:
+    path: "{{ app_home }}"
+    state: directory
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0755'
+  tags:
+    - nginx
+    - webserver
+
+- name: Créer une page de test
+  copy:
+    dest: "{{ app_home }}/index.html"
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Deployed by Ansible</title>
+      </head>
+      <body>
+        <h1>Bienvenue sur {{ inventory_hostname }}</h1>
+        <p>Serveur Web déployé automatiquement avec Ansible</p>
+        <p>Environnement: {{ environment | default('production') }}</p>
+        <p>Datacenter: {{ datacenter | default('unknown') }}</p>
+      </body>
+      </html>
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0644'
+  tags:
+    - nginx
+    - webserver
+
+- name: Démarrer et activer Nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  tags:
+    - nginx
+    - webserver
+
+- name: Ouvrir le port HTTP dans le firewall
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - nginx
+
+- name: Ouvrir le port HTTPS dans le firewall
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags:
+    - firewall
+    - nginx
+
+- name: Valider la configuration Nginx
+  command: nginx -t
+  changed_when: false
+  tags:
+    - nginx
+    - webserver

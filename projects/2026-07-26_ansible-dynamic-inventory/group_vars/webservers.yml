@@ -1,0 +1,38 @@
+---
+# Variables communes pour le groupe 'webservers'
+
+# Packages
+packages_to_install:
+  - nginx
+  - curl
+  - wget
+  - git
+  - htop
+  - net-tools
+
+# Configuration Nginx
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+nginx_keepalive_timeout: 65
+
+# Application web
+app_user: webapp
+app_group: webapp
+app_home: /opt/webapp
+app_port: 8080
+
+# SSL/TLS (optionnel)
+ssl_enabled: false
+ssl_cert_path: /etc/ssl/certs
+ssl_key_path: /etc/ssl/private
+
+# Logging
+log_level: info
+log_format: combined
+access_log_path: /var/log/nginx/access.log
+error_log_path: /var/log/nginx/error.log
+
+# Monitoring
+enable_monitoring: true
+prometheus_port: 9113
