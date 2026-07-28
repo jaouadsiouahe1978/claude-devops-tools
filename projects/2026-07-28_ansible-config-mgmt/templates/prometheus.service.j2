@@ -1,0 +1,61 @@
+#!/sbin/openrc-run
+# Prometheus OpenRC service script
+
+: ${PROMETHEUS_USER:=prometheus}
+: ${PROMETHEUS_GROUP:=prometheus}
+: ${PROMETHEUS_HOME:=/var/lib/prometheus}
+: ${PROMETHEUS_CONFIG:=/etc/prometheus/prometheus.yml}
+: ${PROMETHEUS_RETENTION:={{ prometheus_retention }}}
+: ${PROMETHEUS_LISTEN:=0.0.0.0:{{ prometheus_port }}}
+
+name="prometheus"
+description="Prometheus monitoring system"
+command=/usr/bin/prometheus
+command_args="--config.file=$PROMETHEUS_CONFIG \
+    --storage.tsdb.path=$PROMETHEUS_HOME \
+    --storage.tsdb.retention.time=$PROMETHEUS_RETENTION \
+    --web.listen-address=$PROMETHEUS_LISTEN \
+    --web.enable-lifecycle"
+
+pidfile="/var/run/prometheus.pid"
+logfile="/var/log/prometheus/prometheus.log"
+
+start_pre() {
+    checkpath --directory --owner "$PROMETHEUS_USER:$PROMETHEUS_GROUP" \
+        "$PROMETHEUS_HOME"
+    checkpath --file --owner "$PROMETHEUS_USER:$PROMETHEUS_GROUP" \
+        "$logfile"
+}
+
+start() {
+    ebegin "Starting $name"
+    start-stop-daemon --start --pidfile "$pidfile" \
+        --user "$PROMETHEUS_USER" --group "$PROMETHEUS_GROUP" \
+        -b -m \
+        -x "$command" \
+        -- $command_args \
+        >> "$logfile" 2>&1
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping $name"
+    start-stop-daemon --stop --pidfile "$pidfile"
+    eend $?
+}
+
+reload() {
+    ebegin "Reloading $name"
+    start-stop-daemon --signal HUP --pidfile "$pidfile"
+    eend $?
+}
+
+status() {
+    ebegin "Status of $name"
+    if [ -f "$pidfile" ]; then
+        ps aux | grep "[p]rometheus" > /dev/null && echo "$name is running" || echo "$name is not running"
+    else
+        echo "$name is not running"
+    fi
+    eend $?
+}

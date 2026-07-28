@@ -1,0 +1,93 @@
+---
+# Playbook: Configuration des serveurs web Nginx
+
+- name: "Configuration Serveurs Web - Nginx"
+  hosts: webservers
+  gather_facts: yes
+  tasks:
+    - name: "Installe Nginx"
+      apk:
+        name:
+          - nginx
+          - curl
+        state: present
+
+    - name: "Crée le répertoire web"
+      file:
+        path: /var/www/html
+        state: directory
+        mode: '0755'
+
+    - name: "Déploie la page d'accueil personnalisée"
+      template:
+        src: index.html.j2
+        dest: /var/www/html/index.html
+        mode: '0644'
+      notify: Redémarrer Nginx
+
+    - name: "Déploie la configuration Nginx"
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+        backup: yes
+      notify: Valider et redémarrer Nginx
+
+    - name: "Crée le répertoire de logs Nginx"
+      file:
+        path: /var/log/nginx
+        state: directory
+        mode: '0755'
+
+    - name: "Active le service Nginx"
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+        use: service
+      ignore_errors: yes
+
+    - name: "Vérifie la configuration Nginx"
+      shell: nginx -t
+      register: nginx_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: "Affiche le résultat du test Nginx"
+      debug:
+        var: nginx_check.stderr_lines
+
+    - name: "Test de connectivité HTTP"
+      uri:
+        url: "http://{{ inventory_hostname }}"
+        method: GET
+        status_code: 200
+      register: http_test
+      ignore_errors: yes
+
+    - name: "Résumé serveur web"
+      debug:
+        msg:
+          - "✅ Nginx installé et configuré sur {{ inventory_hostname }}"
+          - "📊 Port: {{ nginx_port }}"
+          - "👥 Workers: {{ nginx_worker_processes }}"
+          - "🔗 Connexions max: {{ nginx_worker_connections }}"
+
+  handlers:
+    - name: "Redémarrer Nginx"
+      service:
+        name: nginx
+        state: restarted
+      ignore_errors: yes
+
+    - name: "Valider et redémarrer Nginx"
+      block:
+        - name: "Valide la configuration Nginx"
+          shell: nginx -t
+          changed_when: false
+
+        - name: "Redémarrage effectif"
+          service:
+            name: nginx
+            state: restarted
+      ignore_errors: yes

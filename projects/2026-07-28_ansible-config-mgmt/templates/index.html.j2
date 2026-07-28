@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - {{ inventory_hostname }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .server-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-line:last-child {
+            border-bottom: none;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .value {
+            color: #333;
+        }
+
+        .status {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 {{ app_name }}</h1>
+
+        <div class="status">
+            ✅ Serveur actif et fonctionnel
+        </div>
+
+        <div class="server-info">
+            <h2 style="text-align: center; color: #667eea; margin-bottom: 15px;">Informations du Serveur</h2>
+
+            <div class="info-line">
+                <span class="label">🖥️ Hostname</span>
+                <span class="value">{{ inventory_hostname }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">🌐 Domaine</span>
+                <span class="value">{{ server_name }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">🔧 Rôle</span>
+                <span class="value">{{ server_role | default('web-server') }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">📊 Port Nginx</span>
+                <span class="value">{{ nginx_port }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">👥 Workers</span>
+                <span class="value">{{ nginx_worker_processes }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">🔗 Max Connexions</span>
+                <span class="value">{{ nginx_worker_connections }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">🌍 Environnement</span>
+                <span class="value">{{ environment }}</span>
+            </div>
+
+            <div class="info-line">
+                <span class="label">📅 Déploiement</span>
+                <span class="value">Ansible Configuration Management</span>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <h3 style="color: #667eea;">Architecture</h3>
+            <p style="margin-top: 10px; color: #666;">
+                📌 Web Servers × 2<br/>
+                🗄️ Database Server × 1<br/>
+                📈 Monitoring Server × 1
+            </p>
+        </div>
+
+        <footer>
+            <p>Déployé avec ❤️ par Ansible | {{ now(utc=True).strftime('%Y-%m-%d %H:%M:%S') }} UTC</p>
+        </footer>
+    </div>
+</body>
+</html>

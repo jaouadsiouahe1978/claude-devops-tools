@@ -1,0 +1,78 @@
+---
+# Playbook: Configuration commune à tous les serveurs
+
+- name: "Configuration Commune - Tous les serveurs"
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: "Met à jour l'index des packages"
+      apk:
+        update_cache: yes
+      changed_when: false
+
+    - name: "Installe les outils essentiels"
+      apk:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - openssh
+          - openssh-client
+          - sudo
+          - ca-certificates
+          - bash
+        state: present
+
+    - name: "Active le service SSH"
+      service:
+        name: sshd
+        state: started
+        enabled: yes
+        use: service
+      ignore_errors: yes
+
+    - name: "Configure SSH pour root"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#PermitRootLogin"
+        line: "PermitRootLogin yes"
+        state: present
+      notify: Redémarrer SSH
+      ignore_errors: yes
+
+    - name: "Configure sudoers pour ansible"
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: "^%wheel"
+        line: "%wheel ALL=(ALL) NOPASSWD: ALL"
+        validate: "visudo -cf %s"
+      ignore_errors: yes
+
+    - name: "Crée le répertoire .ssh"
+      file:
+        path: /root/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: "Définir le hostname"
+      hostname:
+        name: "{{ inventory_hostname }}"
+        use: systemd
+      ignore_errors: yes
+
+    - name: "Afficher les infos système"
+      debug:
+        msg:
+          - "Hostname: {{ ansible_hostname }}"
+          - "OS Family: {{ ansible_os_family }}"
+          - "Distribution: {{ ansible_distribution }}"
+          - "Kernel: {{ ansible_kernel }}"
+
+  handlers:
+    - name: "Redémarrer SSH"
+      service:
+        name: sshd
+        state: restarted
+      ignore_errors: yes

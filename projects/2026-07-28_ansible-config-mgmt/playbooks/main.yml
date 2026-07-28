@@ -1,0 +1,43 @@
+---
+# Playbook Principal - Orchestration complète de l'infrastructure
+# Exécute l'orchestration multi-serveurs en une seule commande
+
+- name: "Configure Infrastructure Globale"
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: "Display deployment info"
+      debug:
+        msg: |
+          🚀 Déploiement DevOps - {{ environment }}
+          📌 Machine: {{ inventory_hostname }}
+          🔧 Rôle: {{ server_role }}
+          🐧 OS: {{ ansible_os_family }}
+
+- name: "Appliquer Configuration Commune"
+  import_playbook: common.yml
+
+- name: "Configurer Serveurs Web"
+  import_playbook: web-servers.yml
+
+- name: "Configurer Base de Données"
+  import_playbook: database.yml
+
+- name: "Configurer Monitoring"
+  import_playbook: monitoring.yml
+
+- name: "Validation Post-Déploiement"
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: "Health check - Récupérer les facts"
+      setup:
+        filter: "ansible_*"
+      register: facts_check
+
+    - name: "Afficher le résumé du déploiement"
+      debug:
+        msg: |
+          ✅ Configuration appliquée sur {{ inventory_hostname }}
+          📊 Facts: {{ facts_check.ansible_facts.keys() | length }} métriques récupérées
+          🎯 Rôle: {{ server_role }}

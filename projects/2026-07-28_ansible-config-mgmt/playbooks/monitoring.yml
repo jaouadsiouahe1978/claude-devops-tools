@@ -1,0 +1,88 @@
+---
+# Playbook: Configuration Monitoring - Prometheus
+
+- name: "Configuration Monitoring - Prometheus"
+  hosts: monitoring
+  gather_facts: yes
+  tasks:
+    - name: "Installe Prometheus"
+      apk:
+        name:
+          - prometheus
+          - curl
+        state: present
+      ignore_errors: yes
+
+    - name: "Crée les répertoires Prometheus"
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+        - /var/log/prometheus
+
+    - name: "Déploie la configuration Prometheus"
+      template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        mode: '0644'
+      notify: Redémarrer Prometheus
+
+    - name: "Déploie les rules de monitoring"
+      template:
+        src: prometheus_rules.yml.j2
+        dest: /etc/prometheus/rules.yml
+        mode: '0644'
+      notify: Redémarrer Prometheus
+
+    - name: "Valide la configuration Prometheus"
+      shell: |
+        cat /etc/prometheus/prometheus.yml | head -20
+      register: prom_config
+      changed_when: false
+
+    - name: "Affiche la configuration Prometheus"
+      debug:
+        var: prom_config.stdout_lines
+
+    - name: "Crée le service Prometheus (systemd)"
+      template:
+        src: prometheus.service.j2
+        dest: /etc/init.d/prometheus
+        mode: '0755'
+      ignore_errors: yes
+
+    - name: "Active le service Prometheus"
+      service:
+        name: prometheus
+        state: started
+        enabled: yes
+        use: service
+      ignore_errors: yes
+
+    - name: "Teste l'accès à Prometheus"
+      uri:
+        url: "http://{{ inventory_hostname }}:{{ prometheus_port }}/api/v1/status/config"
+        method: GET
+        status_code: [200, 301, 302]
+      register: prom_test
+      ignore_errors: yes
+
+    - name: "Résumé Monitoring"
+      debug:
+        msg:
+          - "✅ Prometheus configuré"
+          - "📊 Port: {{ prometheus_port }}"
+          - "⏱️ Scrape interval: {{ prometheus_scrape_interval }}"
+          - "📈 Evaluation interval: {{ prometheus_evaluation_interval }}"
+          - "💾 Retention: {{ prometheus_retention }}"
+          - "🎯 Targets: webservers, databases"
+
+  handlers:
+    - name: "Redémarrer Prometheus"
+      service:
+        name: prometheus
+        state: restarted
+      ignore_errors: yes

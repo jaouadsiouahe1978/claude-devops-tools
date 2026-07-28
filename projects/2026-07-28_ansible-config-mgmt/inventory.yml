@@ -1,0 +1,66 @@
+---
+# Inventaire Ansible pour architecture multi-serveurs
+
+all:
+  vars:
+    # Variables globales
+    ansible_connection: docker
+    app_name: "DevOps App"
+    environment: "development"
+    deploy_user: "ansible"
+
+  children:
+    # Groupe: Serveurs Web
+    webservers:
+      vars:
+        server_role: "web"
+        nginx_port: 80
+        nginx_worker_processes: 2
+      hosts:
+        web1:
+          ansible_host: web1
+          server_name: "web1.local"
+          server_port: 8080
+          nginx_worker_connections: 1024
+        web2:
+          ansible_host: web2
+          server_name: "web2.local"
+          server_port: 8081
+          nginx_worker_connections: 1024
+
+    # Groupe: Base de données
+    databases:
+      vars:
+        server_role: "database"
+        postgres_version: 13
+        postgres_port: 5432
+        postgres_max_connections: 100
+      hosts:
+        db:
+          ansible_host: db
+          server_name: "db.local"
+          postgres_user: "postgres"
+          postgres_password: "devops123"
+          db_name: "devops_app"
+          db_user: "appuser"
+          db_password: "apppass123"
+
+    # Groupe: Monitoring
+    monitoring:
+      vars:
+        server_role: "monitoring"
+        prometheus_port: 9090
+        prometheus_retention: "15d"
+      hosts:
+        prometheus:
+          ansible_host: monitoring
+          server_name: "monitoring.local"
+          prometheus_scrape_interval: 15s
+          prometheus_evaluation_interval: 15s
+
+    # Groupe: Tous les serveurs (shortcuts)
+    linux:
+      children:
+        - webservers
+        - databases
+        - monitoring

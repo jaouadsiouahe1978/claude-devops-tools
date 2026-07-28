@@ -1,0 +1,76 @@
+# Configuration Prometheus pour {{ inventory_hostname }}
+# Générée automatiquement par Ansible
+
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_evaluation_interval }}
+  external_labels:
+    monitor: 'devops-cluster'
+    environment: '{{ environment }}'
+    region: 'eu-west'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - localhost:9093
+
+# Rule files
+rule_files:
+  - '/etc/prometheus/rules.yml'
+
+# Scrape jobs
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+
+  # Web servers monitoring
+  - job_name: 'webservers'
+    static_configs:
+{% for host in groups['webservers'] %}
+      - targets: ['{{ hostvars[host]['ansible_host'] }}:9100']
+        labels:
+          instance: '{{ host }}'
+          server_name: '{{ hostvars[host]['server_name'] }}'
+{% endfor %}
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+
+  # Database monitoring
+  - job_name: 'databases'
+    static_configs:
+{% for host in groups['databases'] %}
+      - targets: ['{{ hostvars[host]['ansible_host'] }}:9187']
+        labels:
+          instance: '{{ host }}'
+          server_name: '{{ hostvars[host]['server_name'] }}'
+          role: 'postgresql'
+{% endfor %}
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node exporter metrics (system level)
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+
+  # Custom metrics
+  - job_name: 'custom_metrics'
+    static_configs:
+      - targets: ['localhost:9000']
+    scrape_interval: 10s
+
+# Service discovery (optional)
+# - job_name: 'kubernetes-pods'
+#   kubernetes_sd_configs:
+#     - role: pod
+#   relabel_configs:
+#     - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+#       action: keep
+#       regex: true

@@ -1,0 +1,56 @@
+# Ansible
+*.pyc
+__pycache__/
+.ansible_cache/
+*.retry
+.ansible/facts.d/
+ansible.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+*.tmp
+
+# SSH
+.ssh/
+id_rsa*
+known_hosts
+
+# Docker
+.dockerignore
+.docker/
+docker-compose.override.yml
+
+# Temporary files
+*.bak
+*.orig
+*.temp
+.~*
+
+# Vault
+.vault-password
+vault-password.txt
+
+# Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db

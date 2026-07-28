@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Serveur de contrôle Ansible
+  control:
+    image: alpine:latest
+    container_name: ansible-control
+    hostname: control
+    volumes:
+      - ./:/workspace
+      - ~/.ssh:/root/.ssh:ro
+    working_dir: /workspace
+    command: sleep 1000
+    networks:
+      - ansible-net
+    depends_on:
+      - web1
+      - web2
+      - db
+      - monitoring
+    environment:
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+
+  # Serveurs Web 1
+  web1:
+    image: alpine:latest
+    container_name: web1
+    hostname: web1
+    networks:
+      - ansible-net
+    ports:
+      - "8080:80"
+      - "2201:22"
+    volumes:
+      - web1-data:/data
+    command: /sbin/init
+    init: true
+    environment:
+      - HOSTNAME=web1
+
+  # Serveurs Web 2
+  web2:
+    image: alpine:latest
+    container_name: web2
+    hostname: web2
+    networks:
+      - ansible-net
+    ports:
+      - "8081:80"
+      - "2202:22"
+    volumes:
+      - web2-data:/data
+    command: /sbin/init
+    init: true
+    environment:
+      - HOSTNAME=web2
+
+  # Base de données PostgreSQL
+  db:
+    image: alpine:latest
+    container_name: db
+    hostname: db
+    networks:
+      - ansible-net
+    ports:
+      - "5432:5432"
+      - "2203:22"
+    volumes:
+      - db-data:/var/lib/postgresql
+    command: /sbin/init
+    init: true
+    environment:
+      - HOSTNAME=db
+
+  # Serveur de Monitoring
+  monitoring:
+    image: alpine:latest
+    container_name: monitoring
+    hostname: monitoring
+    networks:
+      - ansible-net
+    ports:
+      - "9090:9090"
+      - "2204:22"
+    volumes:
+      - monitoring-data:/data
+    command: /sbin/init
+    init: true
+    environment:
+      - HOSTNAME=monitoring
+
+networks:
+  ansible-net:
+    driver: bridge
+
+volumes:
+  web1-data:
+  web2-data:
+  db-data:
+  monitoring-data:

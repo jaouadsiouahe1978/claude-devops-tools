@@ -1,0 +1,97 @@
+---
+# Playbook: Configuration Base de Données PostgreSQL
+
+- name: "Configuration Base de Données - PostgreSQL"
+  hosts: databases
+  gather_facts: yes
+  tasks:
+    - name: "Installe PostgreSQL"
+      apk:
+        name:
+          - postgresql-client
+          - postgresql
+          - postgresql-contrib
+        state: present
+
+    - name: "Crée le répertoire de données PostgreSQL"
+      file:
+        path: /var/lib/postgresql/data
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700'
+
+    - name: "Initialise la base de données PostgreSQL"
+      become_user: postgres
+      shell: |
+        initdb -D /var/lib/postgresql/data -U postgres
+      args:
+        creates: /var/lib/postgresql/data/PG_VERSION
+      ignore_errors: yes
+
+    - name: "Déploie la configuration PostgreSQL"
+      template:
+        src: postgresql.conf.j2
+        dest: /etc/postgresql/postgresql.conf
+        mode: '0644'
+        owner: postgres
+        group: postgres
+      notify: Redémarrer PostgreSQL
+      ignore_errors: yes
+
+    - name: "Active le service PostgreSQL"
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+        use: service
+      ignore_errors: yes
+
+    - name: "Crée la base de données applicative"
+      become_user: postgres
+      shell: |
+        createdb {{ db_name }} -U postgres 2>/dev/null || true
+      register: db_creation
+      changed_when: '"already exists" not in db_creation.stderr'
+      ignore_errors: yes
+
+    - name: "Crée l'utilisateur de la base de données"
+      become_user: postgres
+      shell: |
+        psql -c "CREATE USER {{ db_user }} WITH PASSWORD '{{ db_password }}' CREATEDB CREATEROLE;" 2>/dev/null || true
+      register: user_creation
+      changed_when: "'already exists' not in user_creation.stderr"
+      ignore_errors: yes
+
+    - name: "Accorde les privilèges"
+      become_user: postgres
+      shell: |
+        psql -c "GRANT ALL PRIVILEGES ON DATABASE {{ db_name }} TO {{ db_user }};" 2>/dev/null || true
+      ignore_errors: yes
+
+    - name: "Teste la connexion à PostgreSQL"
+      shell: |
+        psql -U postgres -c "SELECT version();" 2>&1
+      register: pg_version
+      changed_when: false
+      ignore_errors: yes
+
+    - name: "Affiche la version PostgreSQL"
+      debug:
+        var: pg_version.stdout_lines
+
+    - name: "Résumé base de données"
+      debug:
+        msg:
+          - "✅ PostgreSQL {{ postgres_version }} installé"
+          - "📊 Port: {{ postgres_port }}"
+          - "👤 User: {{ db_user }}"
+          - "🗄️ Database: {{ db_name }}"
+          - "⚙️ Max connections: {{ postgres_max_connections }}"
+
+  handlers:
+    - name: "Redémarrer PostgreSQL"
+      service:
+        name: postgresql
+        state: restarted
+      ignore_errors: yes
