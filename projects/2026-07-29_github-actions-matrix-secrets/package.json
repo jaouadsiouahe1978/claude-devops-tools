@@ -1,0 +1,28 @@
+{
+  "name": "devops-matrix-actions",
+  "version": "1.0.0",
+  "description": "GitHub Actions Matrix Jobs & Secrets Management Demo",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint .",
+    "build": "webpack",
+    "build:linux": "npm run build -- --output-filename app-linux-x64",
+    "build:macos": "npm run build -- --output-filename app-macos",
+    "build:windows": "npm run build -- --output-filename app-windows.exe"
+  },
+  "keywords": ["devops", "github-actions", "ci-cd"],
+  "author": "Jaouad",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}

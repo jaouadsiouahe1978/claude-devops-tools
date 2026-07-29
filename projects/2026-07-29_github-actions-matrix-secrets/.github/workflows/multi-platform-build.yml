@@ -1,0 +1,107 @@
+name: Multi-Platform Build Matrix
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: app-linux-x64
+            build-cmd: npm run build:linux
+          - os: macos-latest
+            artifact-name: app-macos
+            build-cmd: npm run build:macos
+          - os: windows-latest
+            artifact-name: app-windows.exe
+            build-cmd: npm run build:windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Display OS Info
+        run: |
+          echo "OS: ${{ runner.os }}"
+          echo "Architecture: ${{ runner.arch }}"
+          uname -a || echo "Windows system"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: ${{ matrix.build-cmd }}
+
+      - name: Create release assets
+        run: |
+          mkdir -p release
+          cp dist/* release/ || cp build/* release/
+          ls -la release/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: release/
+          retention-days: 30
+          if-no-files-found: warn
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Display downloaded artifacts
+        run: ls -R artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-matrix-summary:
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+
+    steps:
+      - name: Print Build Summary
+        run: |
+          echo "📊 Build Matrix Summary"
+          echo "================================"
+          echo "Ubuntu Status: ${{ needs.build.outputs.ubuntu-status }}"
+          echo "macOS Status: ${{ needs.build.outputs.macos-status }}"
+          echo "Windows Status: ${{ needs.build.outputs.windows-status }}"
+
+          if [ "${{ needs.build.result }}" == "failure" ]; then
+            echo "❌ Some builds failed"
+            exit 1
+          fi
+          echo "✅ All platforms built successfully"
