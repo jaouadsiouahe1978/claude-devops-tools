@@ -1,0 +1,48 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'prometheus'
+    environment: 'development'
+
+# Configuration des alertes
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - 'alert_rules.yml'
+
+scrape_configs:
+  # Prometheus scrape sa propre métrique
+  - job_name: 'prometheus'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - métriques système
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node_exporter:9100']
+        labels:
+          host: 'docker_host'
+          instance_type: 'system'
+
+  # cAdvisor - métriques des conteneurs
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance_type: 'container'
+
+  # Application sample
+  - job_name: 'sample_app'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sample_app:8000']
+        labels:
+          service: 'sample-app'
+          environment: 'development'
+    scrape_interval: 10s
+    scrape_timeout: 5s

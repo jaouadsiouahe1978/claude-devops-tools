@@ -1,0 +1,72 @@
+groups:
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Alerte CPU haute
+      - alert: HighCPUUsage
+        expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "CPU élevée détectée"
+          description: "CPU > 80% pendant 2 minutes"
+
+      # Alerte mémoire haute
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "Mémoire élevée détectée"
+          description: "Mémoire > 85% pendant 2 minutes"
+
+      # Alerte espace disque
+      - alert: DiskSpaceWarning
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat"} / node_filesystem_size_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "Espace disque faible"
+          description: "Disque < 15% d'espace libre"
+
+      # Alerte conteneur arrêté
+      - alert: ContainerCrashed
+        expr: time() - container_last_seen > 60
+        for: 1m
+        labels:
+          severity: critical
+          service: container
+        annotations:
+          summary: "Conteneur arrêté de manière inattendue"
+          description: "Aucune métrique reçue depuis > 1 minute"
+
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # Alerte application down
+      - alert: ApplicationDown
+        expr: up{job="sample_app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: application
+        annotations:
+          summary: "Application indisponible"
+          description: "L'application n'est pas accessible"
+
+      # Alerte erreurs application
+      - alert: HighErrorRate
+        expr: rate(app_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: application
+        annotations:
+          summary: "Taux d'erreur élevé"
+          description: "Plus de 5 erreurs par seconde détectées"
