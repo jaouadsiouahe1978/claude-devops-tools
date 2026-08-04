@@ -1,0 +1,22 @@
+# Docker volumes
+prometheus_data/
+grafana_data/
+
+# Logs locaux
+*.log
+logs/
+
+# Fichiers temporaires
+.DS_Store
+.env.local
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Docker
+.dockerignore
