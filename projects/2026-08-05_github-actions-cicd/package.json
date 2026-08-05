@@ -1,0 +1,31 @@
+{
+  "name": "devops-cicd-pipeline",
+  "version": "1.0.0",
+  "description": "Démonstration GitHub Actions CI/CD avec Bash scripting",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "lint": "eslint src/ tests/ --fix",
+    "lint:check": "eslint src/ tests/",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "build": "bash scripts/build.sh",
+    "check": "bash scripts/check-deps.sh"
+  },
+  "keywords": [
+    "devops",
+    "ci-cd",
+    "github-actions",
+    "bash"
+  ],
+  "author": "Jaouad",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.23.0",
+    "eslint": "^8.52.0",
+    "jest": "^29.7.0"
+  }
+}
