@@ -1,0 +1,46 @@
+# ❌ MAUVAIS EXEMPLE - NE PAS UTILISER EN PROD
+# Cette image est intentionnellement mal optimisée pour montrer les antipatterns
+
+FROM node:18
+
+# ❌ Travailler en root (mauvaise sécurité)
+# ❌ Pas de healthcheck
+# ❌ Installer beaucoup de dépendances inutiles
+
+# ❌ Anticache: RUN + COPY ensemble
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    wget \
+    nano \
+    vim \
+    htop \
+    netcat \
+    telnet \
+    iputils-ping \
+    dnsutils \
+    tcpdump \
+    strace \
+    gdb \
+    && rm -rf /var/lib/apt/lists/*
+
+# ❌ COPY package*.json AVANT RUN npm install
+# Cela invalide le cache du layer node_modules à chaque changement du code
+COPY . /app/
+
+WORKDIR /app
+
+# ❌ npm install au lieu de npm ci (développement packages inclus)
+RUN npm install
+
+# ❌ Pas d'optimisation des node_modules
+# ❌ Inclure des devDependencies dans l'image finale
+# ❌ Garder les caches npm
+
+# ❌ Exposer un port ne fait rien pour la sécurité
+EXPOSE 3000
+
+# ❌ Lancer en tant que root (PID 1)
+CMD ["node", "server.js"]

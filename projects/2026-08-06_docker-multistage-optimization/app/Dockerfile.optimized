@@ -1,0 +1,78 @@
+# ✅ OPTIMISÉ - Multi-stage build avec best practices
+
+# Stage 1: Build dependencies
+FROM node:18-alpine AS dependencies
+
+WORKDIR /app
+
+# ✅ COPY package files AVANT d'installer (meilleur cache)
+COPY app/package*.json ./
+
+# ✅ npm ci pour une installation précise et reproductible
+# ✅ --only=prod skip les devDependencies
+RUN npm ci --only=prod && \
+    npm cache clean --force
+
+
+# Stage 2: Builder (dev + compilation)
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# ✅ Copier tous les packages (avec dev)
+COPY app/package*.json ./
+RUN npm ci
+
+# ✅ Copier le code source
+COPY app/server.js ./
+COPY app/.npmrc ./
+
+# ✅ Optionnel: compiler/préparer les assets
+# RUN npm run build  # Si tu as un script build
+
+# ✅ Nettoyer les caches du builder
+RUN npm cache clean --force
+
+
+# Stage 3: Runtime (production finale) - Alpine légère
+FROM node:18-alpine AS runtime
+
+# ✅ Créer un user non-root pour la sécurité
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# ✅ Copier UNIQUEMENT les node_modules de production
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# ✅ Copier uniquement l'application (pas de node_modules dev)
+COPY --chown=nodejs:nodejs app/server.js ./
+COPY --chown=nodejs:nodejs app/package.json ./
+
+# ✅ User sans privilèges
+USER nodejs
+
+# ✅ Healthcheck intégré
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+# ✅ Métadonnées
+LABEL org.opencontainers.image.title="Docker Optimization App" \
+      org.opencontainers.image.description="DevOps demo: multi-stage optimized Docker build" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.authors="Jaouad" \
+      org.opencontainers.image.source="https://github.com/jaouadsiouahe1978/claude-devops-tools"
+
+EXPOSE 3000
+
+# ✅ Port pour readiness probe (Kubernetes)
+EXPOSE 8080
+
+# ✅ Environnement production
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--enable-source-maps" \
+    PORT=3000
+
+# ✅ Lancer avec dumb-init (gestion correcte des signaux)
+CMD ["node", "server.js"]

@@ -1,0 +1,76 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.npm
+.eslintcache
+
+# Dependencies
+package-lock.json.bak
+yarn.lock
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+.nyc_output/
+
+# Documentation
+docs/
+README.md
+CHANGELOG.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary
+tmp/
+temp/
+.tmp/
+*.tar
+*.zip
+
+# Docker
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# Build artifacts
+dist/
+build/
+out/
+*.jar
+*.exe
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Makefile and scripts (optional)
+Makefile
+scripts/
