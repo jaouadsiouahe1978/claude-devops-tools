@@ -1,0 +1,242 @@
+version: '3.9'
+
+services:
+  # =========================================================================
+  # Jaeger Infrastructure (Distributed Tracing Backend)
+  # =========================================================================
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: jaeger
+    environment:
+      COLLECTOR_ZIPKIN_HTTP_PORT: 9411
+      COLLECTOR_OTLP_ENABLED: 'true'
+      SPAN_STORAGE_TYPE: elasticsearch
+      ES_SERVER_URLS: http://elasticsearch:9200
+    ports:
+      # Agent UDP port (for thrift)
+      - "6831:6831/udp"
+      # Collector HTTP port (for receiving spans)
+      - "14268:14268"
+      # Jaeger UI
+      - "16686:16686"
+      # Zipkin compatibility
+      - "9411:9411"
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      tracer: "jaeger"
+      component: "backend"
+
+  # =========================================================================
+  # Elasticsearch (Long-term Span Storage)
+  # =========================================================================
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cat/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    labels:
+      component: "storage"
+
+  # =========================================================================
+  # Prometheus (Metrics Collection)
+  # =========================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      component: "metrics"
+
+  # =========================================================================
+  # Grafana (Visualization)
+  # =========================================================================
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      component: "visualization"
+
+  # =========================================================================
+  # Microservices (Instrumented with OpenTelemetry)
+  # =========================================================================
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+      ENVIRONMENT: development
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      service: "user-service"
+      language: "python"
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: 8002
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+      ENVIRONMENT: development
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      service: "product-service"
+      language: "python"
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    ports:
+      - "8003:8003"
+    environment:
+      PORT: 8003
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+      USER_SERVICE_URL: http://user-service:8001
+      PRODUCT_SERVICE_URL: http://product-service:8002
+      ENVIRONMENT: development
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops
+    labels:
+      service: "order-service"
+      language: "python"
+
+  # =========================================================================
+  # Load Testing Client (Optional - for generating test traces)
+  # =========================================================================
+
+  load-test:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: load-test
+    environment:
+      TARGET_URL: http://order-service:8003
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+    depends_on:
+      order-service:
+        condition: service_healthy
+    networks:
+      - devops
+    # Override entrypoint to keep container running for manual testing
+    entrypoint: /bin/sh -c "sleep infinity"
+    profiles:
+      - test
+    labels:
+      component: "client"
+
+# =========================================================================
+# Networks & Volumes
+# =========================================================================
+
+networks:
+  devops:
+    driver: bridge
+
+volumes:
+  es-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
