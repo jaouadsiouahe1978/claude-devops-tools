@@ -1,0 +1,431 @@
+================================================================================
+    Route53 DNS Architecture - Infrastructure South-2 (Zone Sud-2)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         INTERNET / USERS WORLDWIDE                           │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+                   (DNS Query) "What is api.domaine.com?"
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    AWS ROUTE53 ZONE: domaine.com                             │
+│  Zone ID: Z1234567890ABC                                                     │
+│  Status: ✓ Active | ✓ Nameservers Propagated                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌────────────────────── DNS RECORDS ──────────────────────┐                 │
+│  │                                                           │                 │
+│  │  1. APEX RECORD: domaine.com (A)                         │                 │
+│  │     ├─ Type: Alias                                       │                 │
+│  │     ├─ Target: alb-xxxxx.elb.sa-east-2.amazonaws.com   │                 │
+│  │     ├─ Health Check: ✓ HTTPS /health                    │                 │
+│  │     ├─ TTL: N/A (Alias)                                 │                 │
+│  │     └─ Status: ✓ Resolves → ALB                         │                 │
+│  │                                                           │                 │
+│  │  2. API RECORD: api.domaine.com (A)                      │                 │
+│  │     ├─ Type: Alias + Weighted Routing                   │                 │
+│  │     ├─ Target: alb-xxxxx.elb.sa-east-2.amazonaws.com   │                 │
+│  │     ├─ Weight: 100 (can be 70 for canary)               │                 │
+│  │     ├─ Health Check: ✓ HTTPS port 443 /health           │                 │
+│  │     ├─ TTL: 300s (5 min - fast failover)                │                 │
+│  │     ├─ Interval: 30s                                     │                 │
+│  │     ├─ Failure Threshold: 3                              │                 │
+│  │     └─ Status: ✓ HEALTHY                                │                 │
+│  │                                                           │                 │
+│  │  3. ADMIN RECORD: admin.domaine.com (A)                  │                 │
+│  │     ├─ Type: A Record (Simple)                           │                 │
+│  │     ├─ Value: 203.0.113.50 (Bastion EIP)               │                 │
+│  │     ├─ Health Check: ✓ TCP port 22                      │                 │
+│  │     ├─ TTL: 3600s (1 hour - stable)                     │                 │
+│  │     ├─ Interval: 30s                                     │                 │
+│  │     ├─ Failure Threshold: 2                              │                 │
+│  │     └─ Status: ✓ HEALTHY                                │                 │
+│  │                                                           │                 │
+│  │  4. EXTERNAL RECORD: aden.domaine.com (A)                │                 │
+│  │     ├─ Type: A Record                                    │                 │
+│  │     ├─ Value: 203.0.113.99 (External Partner)          │                 │
+│  │     ├─ Health Check: None                                │                 │
+│  │     ├─ TTL: 300s (can change)                            │                 │
+│  │     └─ Status: ✓ Active                                 │                 │
+│  │                                                           │                 │
+│  │  5. OPTIONAL: IPv6 RECORDS (AAAA)                        │                 │
+│  │     ├─ api.domaine.com → 2001:db8::1                    │                 │
+│  │     └─ domaine.com → 2001:db8::2                        │                 │
+│  │                                                           │                 │
+│  │  6. EMAIL RECORDS (Optional)                             │                 │
+│  │     ├─ MX Records → Google Workspace / Exchange         │                 │
+│  │     ├─ SPF Record → v=spf1 include:_spf.google.com     │                 │
+│  │     ├─ DKIM Record → v=DKIM1; k=rsa; p=...             │                 │
+│  │     └─ DMARC Record → v=DMARC1; p=quarantine            │                 │
+│  │                                                           │                 │
+│  └───────────────────────────────────────────────────────────┘                 │
+│                                                                               │
+│  ┌────────────────────── HEALTH CHECKS ────────────────────┐                 │
+│  │                                                           │                 │
+│  │  Health Check #1: ALB                                     │                 │
+│  │  ├─ Type: HTTPS                                          │                 │
+│  │  ├─ Endpoint: alb-xxxxx.elb.sa-east-2.amazonaws.com    │                 │
+│  │  ├─ Path: /health                                        │                 │
+│  │  ├─ Port: 443                                            │                 │
+│  │  ├─ Interval: 30s                                        │                 │
+│  │  ├─ Failure Threshold: 3 failed checks                   │                 │
+│  │  ├─ Status: ✓ HEALTHY                                   │                 │
+│  │  └─ CloudWatch Alarm: route53-alb-health-check-failed   │                 │
+│  │                                                           │                 │
+│  │  Health Check #2: Bastion                                 │                 │
+│  │  ├─ Type: TCP                                            │                 │
+│  │  ├─ IP: 203.0.113.50                                    │                 │
+│  │  ├─ Port: 22                                             │                 │
+│  │  ├─ Interval: 30s                                        │                 │
+│  │  ├─ Failure Threshold: 2 failed checks                   │                 │
+│  │  ├─ Status: ✓ HEALTHY                                   │                 │
+│  │  └─ CloudWatch Alarm: route53-bastion-health-check-failed │                 │
+│  │                                                           │                 │
+│  └───────────────────────────────────────────────────────────┘                 │
+│                                                                               │
+│  ┌──────────────── NAMESERVERS (Route53) ──────────────────┐                 │
+│  │                                                           │                 │
+│  │  Configured in registrar (GoDaddy):                       │                 │
+│  │                                                           │                 │
+│  │  NS 1: ns-123.awsdns-45.com                              │                 │
+│  │  NS 2: ns-456.awsdns-78.us                               │                 │
+│  │  NS 3: ns-789.awsdns-12.co.uk                            │                 │
+│  │  NS 4: ns-012.awsdns-34.com                              │                 │
+│  │                                                           │                 │
+│  │  All pointing to AWS Route53 (Authoritative)              │                 │
+│  │                                                           │                 │
+│  └───────────────────────────────────────────────────────────┘                 │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                   (Route53 Response) "api.domaine.com = 203.0.113.42"
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                     AWS SOUTH-2 (VPC: 10.0.0.0/16)                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─ PUBLIC SUBNETS ───────────────────────┐                                  │
+│  │                                        │                                  │
+│  │  Subnet A: 10.0.1.0/24                 │                                  │
+│  │  ├─ Bastion-A (10.0.1.10)             │                                  │
+│  │  │  └─ Elastic IP: 203.0.113.50       │  ◄─── admin.domaine.com         │
+│  │  │     (SSH access point)              │                                  │
+│  │  └─ NAT Gateway                        │                                  │
+│  │                                        │                                  │
+│  │  Subnet B: 10.0.2.0/24                 │                                  │
+│  │  ├─ Bastion-B (10.0.2.10)             │                                  │
+│  │  │  └─ Elastic IP: 203.0.113.51       │  (Secondary failover)            │
+│  │  └─ NAT Gateway                        │                                  │
+│  │                                        │                                  │
+│  └────────────────────────────────────────┘                                  │
+│           │                         │                                        │
+│           └─────────────┬───────────┘                                        │
+│                         │                                                    │
+│         ┌───────────────┴───────────────┐                                   │
+│         │                               │                                   │
+│  ┌──────▼──────────────────────────────▼─────────┐                         │
+│  │  APPLICATION LOAD BALANCER (ALB)              │                         │
+│  │  ─────────────────────────────────────────    │                         │
+│  │  DNS Name: alb-xxxxx.elb.sa-east-2.amazonaws.com                         │
+│  │  Zone ID: Z7KQB4TC7K336OM4F (for Alias)      │                         │
+│  │  Port: 80 (HTTP) + 443 (HTTPS)                │                         │
+│  │                                               │                         │
+│  │  Route53 Alias points → ALB (api.domaine.com) │                         │
+│  │  Health Check monitors: /health endpoint      │                         │
+│  │  Status: ✓ HEALTHY                           │                         │
+│  │                                               │                         │
+│  │  Target Groups:                               │                         │
+│  │  ├─ Cluster A: 10.0.10.0/24                   │                         │
+│  │  └─ Cluster B: 10.0.11.0/24                   │                         │
+│  │                                               │                         │
+│  └───────────────────────────────────────────────┘                         │
+│           │                         │                                       │
+│           └──────────────┬──────────┘                                       │
+│                          │                                                   │
+│  ┌──────────────────────▼──────────────────────┐ ┌─────────────────────────┐│
+│  │ PRIVATE SUBNET A: 10.0.10.0/24              │ │ PRIVATE SUBNET B:       ││
+│  │                                             │ │ 10.0.11.0/24            ││
+│  │  Cluster A (Application Tier)               │ │                         ││
+│  │  ├─ EC2-1 (10.0.10.100)                     │ │ Cluster B               ││
+│  │  ├─ EC2-2 (10.0.10.101)                     │ │ ├─ EC2-3 (10.0.11.100)  ││
+│  │  └─ EC2-N (10.0.10.x)                       │ │ ├─ EC2-4 (10.0.11.101)  ││
+│  │                                             │ │ └─ EC2-N (10.0.11.x)    ││
+│  │  Security Group:                            │ │                         ││
+│  │  ├─ Ingress: 8080 from ALB SG               │ │ Security Group:         ││
+│  │  ├─ Ingress: 22 from Bastion SG             │ │ ├─ Same as A            ││
+│  │  └─ Egress: 0.0.0.0/0 (via NAT)             │ │ └─ For redundancy       ││
+│  │                                             │ │                         ││
+│  │  Application: Docker/K8s/ECS                │ │ Application: Same       ││
+│  │  Ports: 8080 (healthcheck at /health)       │ │                         ││
+│  │                                             │ │                         ││
+│  └─────────────────────────────────────────────┘ └─────────────────────────┘│
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────┐              │
+│  │ VPC RESOLVER (PRIVATE HOSTED ZONE)                         │              │
+│  │ ─────────────────────────────────────────────────────────  │              │
+│  │ Zone Name: internal.domaine.com                            │              │
+│  │ Visibility: VPC 10.0.0.0/16 only (private)                │              │
+│  │ Type: Private Hosted Zone                                 │              │
+│  │                                                            │              │
+│  │ Records (visible only inside VPC):                         │              │
+│  │ ├─ internal.domaine.com → 10.0.20.50 (API Gateway)        │              │
+│  │ ├─ db.internal.domaine.com → 10.0.10.20 (RDS)             │              │
+│  │ └─ cache.internal.domaine.com → 10.0.11.30 (Redis)        │              │
+│  │                                                            │              │
+│  │ Usage: EC2 instances can resolve internal services        │              │
+│  │        without Internet access                            │              │
+│  │                                                            │              │
+│  └────────────────────────────────────────────────────────────┘              │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                            DNS RESOLUTION FLOWS
+================================================================================
+
+FLOW 1: External User → API
+────────────────────────────────────────────────────────────────────────────────
+User Browser:          "dig api.domaine.com"
+                       │
+Recursive Resolver     "Ask 8.8.8.8"
+(8.8.8.8)              │
+                       │
+TLD Nameserver         "Who manages .com?"
+                       │
+Route53 NS             "I have api.domaine.com"
+                       │
+Response               "It's 203.0.113.42" ◄─── Alias to ALB
+                       │
+ALB Load Balancer      Routes to Cluster A/B (EC2 instances)
+                       │
+EC2 Instance           Runs application on port 8080
+                       │
+Browser                Receives response
+
+
+FLOW 2: Bastion Access (SSH)
+────────────────────────────────────────────────────────────────────────────────
+User Terminal:         "ssh admin@admin.domaine.com"
+                       │
+DNS Lookup             "admin.domaine.com = ?"
+                       │
+Route53 Response       "203.0.113.50" ◄─── Bastion Elastic IP
+                       │
+SSH Client             Connects to 203.0.113.50:22
+                       │
+Bastion Host           Authenticates + accepts connection
+                       │
+SSH Session            User connected ✓
+
+
+FLOW 3: Internal Service Resolution (from EC2)
+────────────────────────────────────────────────────────────────────────────────
+EC2 Instance:          "nslookup db.internal.domaine.com"
+(inside VPC)           │
+VPC Resolver           "That's a private zone"
+                       │
+Private Zone           "db.internal.domaine.com = 10.0.10.20"
+                       │
+Response               "10.0.10.20" ◄─── Only available inside VPC
+                       │
+Application            Connects to 10.0.10.20 (RDS)
+                       │
+Database               Serves queries ✓
+
+
+FLOW 4: Health Check Monitoring
+────────────────────────────────────────────────────────────────────────────────
+Route53 Health Check   Runs every 30 seconds
+                       │
+                       ├─ Check #1: HTTPS ALB /health
+                       │  └─ Response: 200 OK ✓
+                       │
+                       ├─ Check #2: TCP Bastion:22
+                       │  └─ Response: Port open ✓
+                       │
+CloudWatch Metrics     "health-check-status = HEALTHY"
+                       │
+                       If 3 failures → Alarm triggered
+                       If failover configured → Route to secondary
+
+
+================================================================================
+                          TERRAFORM ARCHITECTURE
+================================================================================
+
+route53_complete_config.tf
+├─ aws_route53_zone (public: domaine.com)
+│  └─ ns-123, ns-456, ns-789, ns-012 (4 nameservers)
+│
+├─ aws_route53_zone (private: internal.domaine.com)
+│  └─ VPC 10.0.0.0/16 only
+│
+├─ aws_route53_record (apex)
+│  └─ Alias to ALB
+│
+├─ aws_route53_record (api)
+│  └─ Weighted Alias to ALB (100% weight)
+│
+├─ aws_route53_record (admin)
+│  └─ A record to Bastion EIP
+│
+├─ aws_route53_record (aden)
+│  └─ A record to External Partner
+│
+├─ aws_route53_record (internal private)
+│  ├─ internal.domaine.com → 10.0.20.50
+│  ├─ db.internal.domaine.com → 10.0.10.20
+│  └─ cache.internal.domaine.com → 10.0.11.30
+│
+├─ aws_route53_health_check (ALB)
+│  ├─ Type: HTTPS
+│  ├─ Path: /health
+│  ├─ Interval: 30s
+│  └─ Failure threshold: 3
+│
+├─ aws_route53_health_check (Bastion)
+│  ├─ Type: TCP
+│  ├─ Port: 22
+│  ├─ Interval: 30s
+│  └─ Failure threshold: 2
+│
+├─ aws_cloudwatch_metric_alarm (ALB)
+│  └─ Triggers when health check fails
+│
+└─ aws_cloudwatch_metric_alarm (Bastion)
+   └─ Triggers when health check fails
+
+
+================================================================================
+                          KEY METRICS & TARGETS
+================================================================================
+
+DNS Resolution Performance:
+├─ Route53 Authoritative Query: < 50ms
+├─ Recursive Resolver Cache: < 10ms
+├─ Public Resolver (8.8.8.8): < 100ms
+├─ Global Propagation: 5-10 minutes
+└─ Full Propagation: 24-48 hours
+
+Health Check Performance:
+├─ ALB Response Time: < 1 second (expected)
+├─ Bastion TCP Connect: < 100ms
+├─ Health Check Interval: 30 seconds
+├─ Failure Detection: 3 × 30s = 90 seconds
+└─ Failover Time: < 2 minutes (typical)
+
+TTL Impact:
+├─ API (300s): Cached 5 min → Fast failover
+├─ Admin (3600s): Cached 1 hour → Stable
+├─ Internal (300s): VPC only → No external cache
+└─ External (300s): Partner can change quickly
+
+Cost Impact (Monthly):
+├─ Hosted Zone: $0.50
+├─ Health Checks (2): $1.00
+├─ DNS Queries (10M): $4.00
+└─ Private Zone: $1.00
+   Total: ~$6.50/month
+
+
+================================================================================
+                             ROUTING POLICIES
+================================================================================
+
+SIMPLE ROUTING (used for: admin, aden)
+├─ Single record per hostname
+├─ No health checks
+├─ All values returned randomly
+└─ Use case: Stable, non-critical endpoints
+
+
+WEIGHTED ROUTING (used for: api with 100%)
+├─ Multiple records per hostname
+├─ Weight distribution (e.g., 70/30 for canary)
+├─ Health checks supported
+└─ Use case: Canary deployment, A/B testing, gradual rollout
+
+
+FAILOVER ROUTING (optional, not configured)
+├─ PRIMARY record (health checked)
+├─ SECONDARY fallback
+├─ Switches on health check failure
+└─ Use case: Active-passive high availability
+
+
+GEOLOCATION ROUTING (optional, not configured)
+├─ Route based on user location
+├─ AWS region, country, continent
+└─ Use case: GDPR compliance, CDN routing
+
+
+LATENCY ROUTING (optional, not configured)
+├─ Route to lowest latency region
+├─ Multiple region endpoints
+└─ Use case: Global application distribution
+
+
+================================================================================
+                        TERRAFORM STATE MANAGEMENT
+================================================================================
+
+Local State (Development):
+├─ terraform.tfstate (git ignore)
+├─ terraform.tfstate.backup
+└─ Risk: Not shared, manual sync needed
+
+Remote State (Production - Recommended):
+├─ S3 backend (terraform-backend-route53)
+├─ DynamoDB lock table
+├─ Encryption at rest
+├─ Versioning enabled
+├─ MFA delete protection
+└─ Terraform Cloud (optional, team collaboration)
+
+
+================================================================================
+                          DISASTER RECOVERY
+================================================================================
+
+Backup Procedures:
+┌─ Terraform State
+│  ├─ cp terraform.tfstate terraform.tfstate.backup.YYYYMMDD
+│  └─ Upload to S3 (encrypted)
+│
+├─ Zone Export
+│  └─ aws route53 list-resource-record-sets > zone-backup.json
+│
+└─ Documentation
+   └─ Keep runbooks + contact list updated
+
+Recovery Procedures:
+┌─ Zone Corruption
+│  ├─ Restore from backup: terraform apply -var-file="backup.tfvars"
+│  └─ Or import previous state: terraform state pull > old.state
+│
+├─ Complete Zone Loss
+│  ├─ Recreate zone: terraform init && terraform apply
+│  └─ Wait 5-10 min for propagation
+│
+└─ Registrar Change
+   ├─ Create identical zone in new registrar
+   ├─ Update NS at old registrar
+   └─ Wait 48h for convergence
+
+Recovery Time Objectives (RTO):
+├─ DNS Failover: < 2 minutes (health check + TTL)
+├─ Zone Recreation: 5-10 minutes + 24-48h propagation
+└─ Full Recovery: < 1 hour (automated via Terraform)
+
+Recovery Point Objectives (RPO):
+├─ Configuration: Real-time (version controlled)
+├─ State: At apply time (terraform.tfstate)
+└─ Data: N/A (Route53 is configuration only)
+
+
+================================================================================
+End of Architecture Diagram - August 2026
+================================================================================

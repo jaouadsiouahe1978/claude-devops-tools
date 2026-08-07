@@ -1,0 +1,387 @@
+{
+  "comment": "Route53 Change Batch Examples - Infrastructure South-2",
+  "description": "Common scenarios for Route53 record management",
+
+  "examples": [
+    {
+      "name": "Example 1: Update TTL for rapid failover",
+      "scenario": "During migration or incident, reduce TTL for faster DNS propagation",
+      "command": "aws route53 change-resource-record-sets --hosted-zone-id Z123456 --change-batch file://reduce-ttl.json",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "api.domaine.com",
+              "Type": "A",
+              "TTL": 60,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.42"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 2: Failover to secondary endpoint",
+      "scenario": "Bastion primary down, manually failover to secondary",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "admin.domaine.com",
+              "Type": "A",
+              "TTL": 60,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.51"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 3: Weighted routing for canary deployment",
+      "scenario": "Deploy new API version to 10% of traffic, gradually increase",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "api.domaine.com",
+              "Type": "A",
+              "SetIdentifier": "api-primary-v1",
+              "Weight": 90,
+              "TTL": 300,
+              "AliasTarget": {
+                "HostedZoneId": "Z7KQB4TC7K336OM4F",
+                "DNSName": "alb-v1-xxxxx.elb.sa-east-2.amazonaws.com",
+                "EvaluateTargetHealth": true
+              }
+            }
+          },
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "api.domaine.com",
+              "Type": "A",
+              "SetIdentifier": "api-canary-v2",
+              "Weight": 10,
+              "TTL": 300,
+              "AliasTarget": {
+                "HostedZoneId": "Z7KQB4TC7K336OM4F",
+                "DNSName": "alb-v2-yyyyy.elb.sa-east-2.amazonaws.com",
+                "EvaluateTargetHealth": true
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 4: Geolocation routing (different endpoints by region)",
+      "scenario": "Route users to nearest CDN or service",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "cdn.domaine.com",
+              "Type": "A",
+              "SetIdentifier": "cdn-americas",
+              "GeoLocation": {
+                "CountryCode": "US"
+              },
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.10"
+                }
+              ]
+            }
+          },
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "cdn.domaine.com",
+              "Type": "A",
+              "SetIdentifier": "cdn-europe",
+              "GeoLocation": {
+                "CountryCode": "FR"
+              },
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.20"
+                }
+              ]
+            }
+          },
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "cdn.domaine.com",
+              "Type": "A",
+              "SetIdentifier": "cdn-default",
+              "GeoLocation": {
+                "CountryCode": "*"
+              },
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.30"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 5: Add IPv6 (AAAA) record",
+      "scenario": "Enable IPv6 support for modern clients",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+              "Name": "api.domaine.com",
+              "Type": "AAAA",
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "2001:db8::1"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 6: Restore record from backup",
+      "scenario": "Accidentally deleted record, restore from known good state",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+              "Name": "api.domaine.com",
+              "Type": "A",
+              "TTL": 300,
+              "AliasTarget": {
+                "HostedZoneId": "Z7KQB4TC7K336OM4F",
+                "DNSName": "alb-xxxxx.elb.sa-east-2.amazonaws.com",
+                "EvaluateTargetHealth": true
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 7: Update external partner endpoint",
+      "scenario": "Partner changes their service IP",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "aden.domaine.com",
+              "Type": "A",
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.100"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 8: Create/Update MX records for email",
+      "scenario": "Setup or update email routing",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "domaine.com",
+              "Type": "MX",
+              "TTL": 3600,
+              "ResourceRecords": [
+                {
+                  "Value": "10 aspmx.l.google.com"
+                },
+                {
+                  "Value": "20 alt1.aspmx.l.google.com"
+                },
+                {
+                  "Value": "30 alt2.aspmx.l.google.com"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 9: Create SPF/DKIM records",
+      "scenario": "Configure email security",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "domaine.com",
+              "Type": "TXT",
+              "TTL": 3600,
+              "ResourceRecords": [
+                {
+                  "Value": "\"v=spf1 include:_spf.google.com ~all\""
+                }
+              ]
+            }
+          },
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "default._domainkey.domaine.com",
+              "Type": "TXT",
+              "TTL": 3600,
+              "ResourceRecords": [
+                {
+                  "Value": "\"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3...\""
+                }
+              ]
+            }
+          },
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "_dmarc.domaine.com",
+              "Type": "TXT",
+              "TTL": 3600,
+              "ResourceRecords": [
+                {
+                  "Value": "\"v=DMARC1; p=quarantine; rua=mailto:admin@domaine.com\""
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 10: Add CNAME subdomain (forwarding)",
+      "scenario": "Create alias for services",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+              "Name": "mail.domaine.com",
+              "Type": "CNAME",
+              "TTL": 3600,
+              "ResourceRecords": [
+                {
+                  "Value": "ghs.googlehosted.com"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 11: Wildcard record for catch-all",
+      "scenario": "Route unknown subdomains to default service",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+              "Name": "*.domaine.com",
+              "Type": "A",
+              "TTL": 300,
+              "AliasTarget": {
+                "HostedZoneId": "Z7KQB4TC7K336OM4F",
+                "DNSName": "alb-xxxxx.elb.sa-east-2.amazonaws.com",
+                "EvaluateTargetHealth": false
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      "name": "Example 12: Delete record (dangerous!)",
+      "scenario": "Remove outdated DNS entry",
+      "warning": "Be very careful with DELETE. Ensure you have backup first!",
+      "change_batch": {
+        "Changes": [
+          {
+            "Action": "DELETE",
+            "ResourceRecordSet": {
+              "Name": "old-service.domaine.com",
+              "Type": "A",
+              "TTL": 300,
+              "ResourceRecords": [
+                {
+                  "Value": "203.0.113.99"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+
+  "common_parameters": {
+    "hosted_zone_ids": {
+      "south_2": "Z7KQB4TC7K336OM4F",
+      "us_east_1": "Z35SXDOTRQ7X7K",
+      "eu_west_1": "Z32O12XQLNTSW2"
+    },
+    "ttl_values": {
+      "dynamic_endpoints": "300 (5 minutes - for ALB, canary deploys)",
+      "stable_services": "3600 (1 hour - for internal services)",
+      "rarely_changed": "86400 (24 hours - for permanent endpoints)",
+      "email": "3600 (1 hour - MX, SPF, DKIM)"
+    }
+  },
+
+  "usage_instructions": {
+    "step_1": "Copy the desired change_batch from above",
+    "step_2": "Save to file: cat > update.json << 'EOF' ... EOF",
+    "step_3": "Execute: aws route53 change-resource-record-sets --hosted-zone-id Z123 --change-batch file://update.json",
+    "step_4": "Verify: aws route53 list-resource-record-sets --hosted-zone-id Z123",
+    "step_5": "Monitor: dig api.domaine.com (may take 30-60s to propagate)"
+  },
+
+  "terraform_equivalent": {
+    "note": "These changes can also be managed via Terraform (recommended)",
+    "advantage": "Version controlled, reproducible, auditable",
+    "example": "See route53_complete_config.tf for Terraform implementation"
+  }
+}
