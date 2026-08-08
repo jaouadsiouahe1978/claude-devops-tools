@@ -1,0 +1,29 @@
+# Ansible
+ansible.log
+*.retry
+
+# SSH
+.ssh/
+*.pem
+*.key
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+.swp

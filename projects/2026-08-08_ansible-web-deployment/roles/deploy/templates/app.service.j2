@@ -1,0 +1,33 @@
+[Unit]
+Description=Node.js Web Application
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_home }}/app
+
+# Application environment
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+
+# Start command
+ExecStart=/usr/bin/node server.js
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+StandardOutput=append:{{ app_home }}/logs/app.log
+StandardError=append:{{ app_home }}/logs/app-error.log
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+[Install]
+WantedBy=multi-user.target

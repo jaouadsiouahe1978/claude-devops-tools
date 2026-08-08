@@ -1,0 +1,51 @@
+---
+# Common Role: Configuration commune du système
+
+- name: "Update apt cache"
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: "Upgrade all packages"
+  apt:
+    upgrade: safe
+  when: ansible_os_family == "Debian"
+
+- name: "Install essential packages"
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - build-essential
+      - python3-pip
+      - libssl-dev
+      - libffi-dev
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: "Create application user"
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    home: "{{ app_home }}"
+    shell: /bin/bash
+    createhome: yes
+    state: present
+
+- name: "Configure sudo for application user (optional)"
+  lineinfile:
+    path: /etc/sudoers.d/webapp
+    line: "{{ app_user }} ALL=(ALL) NOPASSWD: /usr/sbin/systemctl"
+    state: present
+    create: yes
+    mode: '0440'
+  when: False  # Désactiver par défaut pour sécurité
+
+- name: "Display system info"
+  debug:
+    msg: |
+      System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+      User created: {{ app_user }}
+      Home directory: {{ app_home }}
