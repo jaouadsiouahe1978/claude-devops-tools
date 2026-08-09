@@ -1,0 +1,51 @@
+---
+# Créer le namespace postgresql
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgresql
+  labels:
+    app: postgres-learning
+
+---
+# ConfigMap pour les configurations PostgreSQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: postgresql
+data:
+  # Configuration PostgreSQL
+  POSTGRES_DB: "myapp"
+  POSTGRES_INITDB_ARGS: "-c max_connections=200 -c shared_buffers=256MB"
+
+  # Scripts d'initialisation (optionnel)
+  init-db.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS logs (
+      id SERIAL PRIMARY KEY,
+      message TEXT NOT NULL,
+      level VARCHAR(50),
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+---
+# Secret pour les credentials PostgreSQL
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: postgresql
+type: Opaque
+stringData:
+  # Password pour l'utilisateur postgres
+  POSTGRES_PASSWORD: "secure_password_change_me"
+
+  # Username (optionnel)
+  POSTGRES_USER: "postgres"
