@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:15-alpine
+    container_name: multitier-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: myapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - multitier-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.backend
+    container_name: multitier-backend
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgresql
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: myapp
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - multitier-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Nginx
+  frontend:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.frontend
+    container_name: multitier-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - multitier-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  multitier-network:
+    driver: bridge

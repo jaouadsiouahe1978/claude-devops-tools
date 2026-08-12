@@ -1,0 +1,24 @@
+apiVersion: v2
+name: multitier
+description: A Helm chart for deploying a multi-tier application (Frontend + Backend + Database) on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - multitier
+  - kubernetes
+  - helm
+  - docker
+
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+sources:
+  - https://github.com/jaouadsiouahe1978/claude-devops-tools
+
+maintainers:
+  - name: Jaouad
+    email: jsinfo38@gmail.com
+
+annotations:
+  category: Integration
+  licenses: Apache-2.0

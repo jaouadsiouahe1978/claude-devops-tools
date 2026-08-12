@@ -1,0 +1,105 @@
+# Production Environment Values
+
+global:
+  environment: production
+
+frontend:
+  enabled: true
+  replicaCount: 3
+  image:
+    tag: "1.24"
+  service:
+    type: LoadBalancer
+    port: 80
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+backend:
+  enabled: true
+  replicaCount: 5
+  image:
+    tag: "18-alpine"
+  service:
+    type: ClusterIP
+    port: 5000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 75
+
+database:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: "15-alpine"
+  auth:
+    username: postgres
+    password: "CHANGE-THIS-TO-STRONG-PASSWORD"
+    database: myapp_prod
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: fast-ssd
+
+configMap:
+  enabled: true
+  data:
+    app_name: "Multi-Tier App (Production)"
+    log_level: "info"
+    api_timeout: "30s"
+
+secrets:
+  enabled: true
+  apiKey: "CHANGE-THIS-TO-PROD-API-KEY"
+  jwtSecret: "CHANGE-THIS-TO-PROD-JWT-SECRET"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: "myapp.production.com"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls-prod
+      hosts:
+        - myapp.production.com
+
+rbac:
+  create: true
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+namespace: production

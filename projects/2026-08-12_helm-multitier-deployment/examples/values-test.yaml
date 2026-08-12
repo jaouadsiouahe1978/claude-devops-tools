@@ -1,0 +1,82 @@
+# Testing/Staging Environment Values
+
+global:
+  environment: testing
+
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: "1.24"
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: "18-alpine"
+  service:
+    type: ClusterIP
+    port: 5000
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+database:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: "15-alpine"
+  auth:
+    username: postgres
+    password: test-password-456
+    database: myapp_test
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+
+configMap:
+  enabled: true
+  data:
+    app_name: "Multi-Tier App (Test)"
+    log_level: "info"
+    api_timeout: "45s"
+
+secrets:
+  enabled: true
+  apiKey: "test-api-key-12345"
+  jwtSecret: "test-jwt-secret-67890"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+  hosts:
+    - host: "myapp-test.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls-test
+      hosts:
+        - myapp-test.example.com
+
+rbac:
+  create: true
+
+namespace: testing

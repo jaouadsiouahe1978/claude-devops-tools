@@ -1,0 +1,49 @@
+{{- if .Values.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "multitier.fullname" . }}-config
+  labels:
+    {{- include "multitier.labels" . | nindent 4 }}
+  namespace: {{ .Values.namespace }}
+data:
+  {{- range $key, $value := .Values.configMap.data }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "multitier.fullname" . }}-frontend-config
+  labels:
+    {{- include "multitier.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+  namespace: {{ .Values.namespace }}
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api {
+            proxy_pass http://{{ include "multitier.backend.fullname" . }}:{{ .Values.backend.service.port }};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+{{- end }}

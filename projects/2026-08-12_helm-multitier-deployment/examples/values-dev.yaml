@@ -1,0 +1,67 @@
+# Development Environment Values
+
+global:
+  environment: development
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: "1.24"
+  service:
+    type: NodePort
+    port: 80
+  resources:
+    limits:
+      cpu: 50m
+      memory: 64Mi
+    requests:
+      cpu: 25m
+      memory: 32Mi
+
+backend:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: "18-alpine"
+  service:
+    type: NodePort
+    port: 5000
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+database:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: "15-alpine"
+  auth:
+    username: postgres
+    password: dev-password-123
+    database: myapp_dev
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: standard
+
+configMap:
+  enabled: true
+  data:
+    app_name: "Multi-Tier App (Dev)"
+    log_level: "debug"
+    api_timeout: "60s"
+
+secrets:
+  enabled: true
+  apiKey: "dev-api-key-12345"
+  jwtSecret: "dev-jwt-secret-67890"
+
+ingress:
+  enabled: false
+
+namespace: dev
