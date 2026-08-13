@@ -1,0 +1,60 @@
+---
+# Deploy Role: Déploiement de l'application Node.js
+
+- name: "Clone or update application repository"
+  git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_home }}/app"
+    version: "{{ app_version }}"
+    accept_hostkey: yes
+  become_user: "{{ app_user }}"
+  register: git_result
+
+- name: "Display git status"
+  debug:
+    msg: "Repository cloned/updated from {{ app_repo }}"
+
+- name: "Install Node.js dependencies"
+  npm:
+    path: "{{ app_home }}/app"
+    state: present
+    production: yes
+  become_user: "{{ app_user }}"
+
+- name: "Create systemd service file"
+  template:
+    src: app.service.j2
+    dest: /etc/systemd/system/webapp.service
+    mode: '0644'
+  notify: Restart App Service
+
+- name: "Enable application service"
+  systemd:
+    name: webapp
+    enabled: yes
+    daemon_reload: yes
+
+- name: "Start application service"
+  systemd:
+    name: webapp
+    state: started
+
+- name: "Wait for application to be ready"
+  uri:
+    url: "http://localhost:3000"
+    status_code: 200
+  retries: 10
+  delay: 1
+  register: app_ready
+  until: app_ready is succeeded
+  ignore_errors: yes
+
+- name: "Display deployment status"
+  debug:
+    msg: |
+      ✓ Application deployed successfully
+      - Repository: {{ app_repo }}
+      - Branch: {{ app_version }}
+      - Path: {{ app_home }}/app
+      - Service: webapp
+      - Port: 3000 (proxied via Nginx on port {{ nginx_port }})

@@ -1,0 +1,31 @@
+# Fichiers locaux
+*.log
+*.tmp
+.DS_Store
+
+# Données sensibles
+secrets.yaml
+passwords.txt
+*.pem
+*.key
+
+# Caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Données PV locales (si clonées)
+/data/
+/volumes/
+
+# Temporaires
+scratchpad/
+temp/
+.test-results/

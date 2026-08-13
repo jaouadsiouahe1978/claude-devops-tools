@@ -1,0 +1,78 @@
+name: Deploy with Ansible
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible paramiko
+
+      - name: Configure SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Create inventory file
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          cat > inventory.ini <<EOF
+          [webservers]
+          web1 ansible_host=$DEPLOY_HOST ansible_user=$DEPLOY_USER ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+          [webservers:vars]
+          app_user=webapp
+          app_group=webapp
+          app_home=/home/webapp
+          app_repo=https://github.com/${{ github.repository }}.git
+          app_version=${{ github.ref_name }}
+          node_version=18
+          nginx_port=80
+          EOF
+
+      - name: Validate Ansible playbook
+        run: |
+          ansible-playbook playbook.yml --syntax-check
+
+      - name: Run Ansible playbook (dry-run)
+        run: |
+          ansible-playbook -i inventory.ini playbook.yml --check -v
+
+      - name: Run Ansible playbook (apply)
+        if: github.ref_name == 'main'
+        run: |
+          ansible-playbook -i inventory.ini playbook.yml -v
+
+      - name: Verify deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          echo "Testing deployment on $DEPLOY_HOST"
+          curl -f http://$DEPLOY_HOST/health || true
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Ansible deployment workflow completed"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"

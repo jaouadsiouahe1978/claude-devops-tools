@@ -1,0 +1,90 @@
+{{- if and .Values.database.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "multitier.fullname" . }}-db-init
+  labels:
+    {{- include "multitier.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-init
+  namespace: {{ .Values.namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "multitier.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database-init
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "multitier.serviceAccountName" . }}
+      containers:
+      - name: db-init
+        image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "multitier.fullname" . }}-secret
+              key: db-password
+        - name: DB_HOST
+          value: {{ include "multitier.database.fullname" . }}
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "multitier.fullname" . }}-secret
+              key: db-user
+        - name: DB_NAME
+          value: {{ .Values.database.auth.database | quote }}
+        command:
+          - /bin/sh
+          - -c
+          - |
+            # Wait for database to be ready
+            for i in {1..30}; do
+              if pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER; then
+                echo "Database is ready!"
+                break
+              fi
+              echo "Waiting for database... ($i/30)"
+              sleep 2
+            done
+
+            # Run initialization script
+            psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME <<EOF
+            -- Create tables
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username VARCHAR(100) UNIQUE NOT NULL,
+              email VARCHAR(100) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS posts (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
+              title VARCHAR(255) NOT NULL,
+              content TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Create indexes
+            CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+            CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+            -- Insert sample data
+            INSERT INTO users (username, email) VALUES ('admin', 'admin@example.com') ON CONFLICT DO NOTHING;
+            INSERT INTO users (username, email) VALUES ('demo', 'demo@example.com') ON CONFLICT DO NOTHING;
+
+            -- Verify initialization
+            SELECT 'Database initialization complete' as status;
+            EOF
+
+            echo "Database initialization completed successfully!"
+{{- end }}

@@ -1,0 +1,179 @@
+---
+# ============================================================================
+# Service Headless - Accès stable aux pods PostgreSQL
+# ============================================================================
+# Un service headless (ClusterIP: None) n'a pas d'adresse IP cluster unique.
+# À la place, les DNS entrées pointent directement sur les pods.
+# C'est essentiel pour StatefulSet !
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: postgresql
+  labels:
+    app: postgres
+spec:
+  # Service headless - pas d'IP de service
+  clusterIP: None
+
+  # Le selector doit matcher les pods du StatefulSet
+  selector:
+    app: postgres
+
+  # Ports et configuration réseau
+  ports:
+    - port: 5432
+      name: postgresql
+      protocol: TCP
+      targetPort: 5432
+
+  # Configuration DNS pour un StatefulSet
+  publishNotReadyAddresses: true
+
+---
+# ============================================================================
+# StatefulSet PostgreSQL
+# ============================================================================
+# Un StatefulSet gère les pods avec identité stable et état persistant.
+# Chaque replica obtient :
+# - Un nom stable (postgres-0, postgres-1, etc.)
+# - Son propre PersistentVolumeClaim
+# - Un ordre de startup/shutdown prévisible
+# ============================================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: postgresql
+  labels:
+    app: postgres
+spec:
+  # Service associé (must match the headless service name)
+  serviceName: postgres
+
+  # Nombre de replicas
+  replicas: 2
+
+  # Sélecteur pour les pods
+  selector:
+    matchLabels:
+      app: postgres
+
+  # Template pour les pods
+  template:
+    metadata:
+      labels:
+        app: postgres
+        version: "13"
+    spec:
+      # Contrôler l'ordre de terminaison
+      terminationGracePeriodSeconds: 30
+
+      # Containers
+      containers:
+        - name: postgres
+          image: postgres:13-alpine
+
+          # Ports
+          ports:
+            - containerPort: 5432
+              name: postgresql
+              protocol: TCP
+
+          # Variables d'environnement (du Secret et ConfigMap)
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+            - configMapRef:
+                name: postgres-config
+
+          # Probes pour la santé
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          # Ressources
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # Volume mounts
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+
+            - name: postgres-config-init
+              mountPath: /docker-entrypoint-initdb.d
+
+      # Volumes statiques
+      volumes:
+        - name: postgres-config-init
+          configMap:
+            name: postgres-config
+            items:
+              - key: init-db.sql
+                path: 01-init.sql
+
+  # Déclaration des PersistentVolumeClaims pour le StatefulSet
+  # Kubernetes crée automatiquement un PVC pour chaque pod
+  # postgres-0 obtient postgres-storage-0
+  # postgres-1 obtient postgres-storage-1, etc.
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        # Optionnel: spécifier le StorageClass
+        # storageClassName: local-storage
+
+---
+# ============================================================================
+# Exposition optionnelle pour NodePort ou LoadBalancer (développement)
+# ============================================================================
+# Décommentez si vous voulez accéder à PostgreSQL depuis l'extérieur du cluster
+
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: postgres-external
+#   namespace: postgresql
+#   labels:
+#     app: postgres
+# spec:
+#   type: NodePort
+#   selector:
+#     app: postgres
+#   ports:
+#     - port: 5432
+#       targetPort: 5432
+#       nodePort: 30432  # Accès via <node-ip>:30432

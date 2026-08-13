@@ -1,0 +1,52 @@
+---
+# Playbook principal pour déployer une application web
+# Usage: ansible-playbook -i inventory.ini playbook.yml
+
+- name: Deploy Web Application with Ansible
+  hosts: webservers
+  become: yes  # Exécuter les tâches en tant que root
+
+  handlers:
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart App Service
+      systemd:
+        name: webapp
+        state: restarted
+        daemon_reload: yes
+
+  pre_tasks:
+    - name: "Display deployment info"
+      debug:
+        msg: "Deploying application to {{ inventory_hostname }}"
+
+  roles:
+    # Étape 1 : Configuration commune du système
+    - role: common
+      tags: ["common", "always"]
+
+    # Étape 2 : Installation du serveur web et Node.js
+    - role: webserver
+      tags: ["webserver"]
+
+    # Étape 3 : Déploiement de l'application
+    - role: deploy
+      tags: ["deploy"]
+
+  post_tasks:
+    - name: "Verify application is running"
+      uri:
+        url: "http://localhost:{{ nginx_port }}"
+        status_code: 200
+      retries: 3
+      delay: 2
+      register: app_status
+
+    - name: "Display deployment status"
+      debug:
+        msg: "✅ Application successfully deployed on {{ inventory_hostname }}"
+      when: app_status is succeeded

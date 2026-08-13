@@ -1,0 +1,196 @@
+FROM nginx:1.24-alpine
+
+# Copy nginx configuration (will be mounted via ConfigMap)
+RUN mkdir -p /etc/nginx/conf.d
+
+# Create a simple HTML application
+RUN mkdir -p /usr/share/nginx/html
+
+RUN cat > /usr/share/nginx/html/index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Tier Application</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .status {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .status-label { font-weight: 600; color: #555; }
+        .status-value { color: #667eea; }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover { background: #764ba2; }
+        .response {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-left: 3px solid #667eea;
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        .loading { color: #f39c12; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Multi-Tier Application</h1>
+
+        <div class="status">
+            <div class="status-item">
+                <span class="status-label">Frontend Status:</span>
+                <span class="status-value success">✓ Running</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Backend Status:</span>
+                <span class="status-value" id="backend-status">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Database Status:</span>
+                <span class="status-value" id="db-status">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Timestamp:</span>
+                <span class="status-value" id="timestamp">-</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="checkBackendHealth()">Check Backend</button>
+            <button onclick="getUsers()">Get Users</button>
+            <button onclick="getPosts()">Get Posts</button>
+            <button onclick="clearResponse()">Clear</button>
+        </div>
+
+        <div class="response" id="response">Ready for API calls...</div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const response = document.getElementById('response');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'loading';
+            response.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            response.scrollTop = response.scrollHeight;
+        }
+
+        function clearResponse() {
+            document.getElementById('response').innerHTML = 'Response cleared...';
+        }
+
+        async function checkHealthStatus() {
+            try {
+                const backend = await fetch('/api/health', { method: 'HEAD' });
+                document.getElementById('backend-status').textContent = backend.ok ? '✓ Running' : '✗ Down';
+                document.getElementById('backend-status').className = backend.ok ? 'status-value success' : 'status-value error';
+            } catch (e) {
+                document.getElementById('backend-status').textContent = '✗ Down';
+                document.getElementById('backend-status').className = 'status-value error';
+            }
+
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        }
+
+        async function checkBackendHealth() {
+            log('Checking backend health...', 'loading');
+            try {
+                const res = await fetch('/api/health');
+                const data = await res.json();
+                log('Backend Response: ' + JSON.stringify(data), 'success');
+                document.getElementById('db-status').textContent = '✓ Connected';
+                document.getElementById('db-status').className = 'status-value success';
+            } catch (e) {
+                log('Error: ' + e.message, 'error');
+                document.getElementById('db-status').textContent = '✗ Error';
+                document.getElementById('db-status').className = 'status-value error';
+            }
+        }
+
+        async function getUsers() {
+            log('Fetching users...', 'loading');
+            try {
+                const res = await fetch('/api/users');
+                const data = await res.json();
+                log('Users: ' + JSON.stringify(data, null, 2), 'success');
+            } catch (e) {
+                log('Error fetching users: ' + e.message, 'error');
+            }
+        }
+
+        async function getPosts() {
+            log('Fetching posts...', 'loading');
+            try {
+                const res = await fetch('/api/posts');
+                const data = await res.json();
+                log('Posts: ' + JSON.stringify(data, null, 2), 'success');
+            } catch (e) {
+                log('Error fetching posts: ' + e.message, 'error');
+            }
+        }
+
+        // Check status on page load
+        window.addEventListener('load', checkHealthStatus);
+        setInterval(checkHealthStatus, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>
+EOF
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
