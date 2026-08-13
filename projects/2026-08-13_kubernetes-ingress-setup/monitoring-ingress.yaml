@@ -1,0 +1,293 @@
+---
+# ServiceMonitor pour Prometheus (scraper les métriques du NGINX Ingress)
+# Nécessite prometheus-operator ou Prometheus avec discover automatique
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nginx-ingress-metrics
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+
+---
+# PrometheusRule pour les alertes
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nginx-ingress-rules
+  namespace: ingress-nginx
+spec:
+  groups:
+  - name: nginx-ingress
+    interval: 30s
+    rules:
+    # Alerter si le controller est down
+    - alert: NginxIngressControllerDown
+      expr: up{job="ingress-nginx-metrics"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "NGINX Ingress Controller is down"
+        description: "NGINX Ingress Controller has been down for more than 5 minutes"
+
+    # Alerter sur le taux d'erreur HTTP 5xx
+    - alert: NginxIngress5xxErrors
+      expr: rate(nginx_ingress_controller_requests{status=~"5.."}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High 5xx error rate in NGINX Ingress"
+        description: "NGINX Ingress has {{ $value }} errors per second"
+
+    # Alerter sur le taux d'erreur HTTP 4xx
+    - alert: NginxIngress4xxErrors
+      expr: rate(nginx_ingress_controller_requests{status=~"4.."}[5m]) > 0.1
+      for: 10m
+      labels:
+        severity: info
+      annotations:
+        summary: "High 4xx error rate in NGINX Ingress"
+        description: "NGINX Ingress has {{ $value }} errors per second"
+
+    # Alerter si la latence est trop élevée
+    - alert: NginxIngressHighLatency
+      expr: histogram_quantile(0.95, rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency in NGINX Ingress"
+        description: "P95 latency is {{ $value }}s"
+
+---
+# ConfigMap pour les dashboards Grafana
+# Import le dashboard ID 9614 de Grafana Community: NGINX Ingress Controller
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-ingress-dashboard
+  namespace: ingress-nginx
+  labels:
+    grafana_dashboard: "1"
+data:
+  nginx-ingress.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "Prometheus",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": 9614,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "expr": "rate(nginx_ingress_controller_requests[5m])",
+              "refId": "A"
+            }
+          ],
+          "title": "Request Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(nginx_ingress_controller_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "p95",
+              "refId": "A"
+            }
+          ],
+          "title": "Request Latency (p95)",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 27,
+      "style": "dark",
+      "tags": [
+        "nginx",
+        "ingress"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "NGINX Ingress Controller",
+      "uid": "nginx-ingress",
+      "version": 0
+    }
+
+---
+# Service pour exposer les métriques NGINX (si nécessaire)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-metrics
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 10254
+    targetPort: 10254
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/component: controller

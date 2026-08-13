@@ -1,0 +1,149 @@
+---
+# Ingress basique avec routing par hôte
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app1-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.ingressClassName: nginx
+spec:
+  rules:
+  - host: app1.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+  - host: "app1.example.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+
+---
+# Ingress pour App2 avec routing par chemin
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app2-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+spec:
+  rules:
+  - host: app2.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-service
+            port:
+              number: 80
+  - host: "*.example.com"
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-service
+            port:
+              number: 80
+
+---
+# Ingress pour App3
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app3-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+spec:
+  rules:
+  - host: app3.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app3-service
+            port:
+              number: 80
+
+---
+# Ingress multi-chemin sur le même hôte
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: multi-path-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+spec:
+  rules:
+  - host: multi.local
+    http:
+      paths:
+      - path: /frontend
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+      - path: /backend
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-service
+            port:
+              number: 80
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: app3-service
+            port:
+              number: 80
+
+---
+# Ingress par défaut (catchall)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: default-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+spec:
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80

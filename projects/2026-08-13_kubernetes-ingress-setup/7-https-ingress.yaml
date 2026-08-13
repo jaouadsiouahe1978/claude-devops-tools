@@ -1,0 +1,136 @@
+---
+# Ingress avec SSL/TLS auto-généré (Self-signed)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app1-https-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: "selfsigned-ca"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - app1.local
+    - app1.example.com
+    secretName: app1-tls-secret
+  rules:
+  - host: app1.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+  - host: app1.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+
+---
+# Ingress avec Let's Encrypt Staging (pour tests)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app2-https-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - app2.local
+    secretName: app2-tls-secret
+  rules:
+  - host: app2.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-service
+            port:
+              number: 80
+
+---
+# Ingress avec annotations SSL avancées
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app3-https-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: "selfsigned-ca"
+    # HSTS (HTTP Strict Transport Security)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  tls:
+  - hosts:
+    - app3.local
+    secretName: app3-tls-secret
+  rules:
+  - host: app3.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app3-service
+            port:
+              number: 80
+
+---
+# Ingress multi-domaine avec TLS wildcard
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wildcard-https-ingress
+  namespace: apps
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: "selfsigned-ca"
+spec:
+  tls:
+  - hosts:
+    - "*.local"
+    secretName: wildcard-tls-secret
+  rules:
+  - host: "*.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80

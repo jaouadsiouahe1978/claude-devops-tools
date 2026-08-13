@@ -1,0 +1,26 @@
+---
+# Namespace pour les applications
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps
+  labels:
+    name: apps
+
+---
+# Namespace pour cert-manager
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    name: cert-manager
+
+---
+# Namespace pour NGINX Ingress
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    name: ingress-nginx
