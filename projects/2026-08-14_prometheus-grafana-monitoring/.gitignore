@@ -1,0 +1,27 @@
+# Node modules
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker volumes (optionnel - si vous voulez versionner)
+# prometheus_data/
+# grafana_data/
+# alertmanager_data/

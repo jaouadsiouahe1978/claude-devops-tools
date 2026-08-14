@@ -1,0 +1,74 @@
+# Règles d'alertes Prometheus
+
+groups:
+  - name: app_alerts
+    interval: 30s
+    rules:
+      # Alerte si l'application est down
+      - alert: AppDown
+        expr: up{job="app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application {{ $labels.job }} est down"
+          description: "L'application {{ $labels.job }} n'est pas accessible depuis 1 minute. Rendez-vous sur http://{{ $labels.instance }}"
+
+      # Alerte si le taux d'erreur est trop élevé
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreur élevé détecté"
+          description: "Le taux d'erreur HTTP 5xx dépasse 5% (valeur actuelle: {{ $value | humanizePercentage }})"
+
+      # Alerte si le temps de réponse est élevé
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Temps de réponse élevé"
+          description: "Le p95 du temps de réponse dépasse 1 seconde (valeur: {{ $value | humanizeDuration }})"
+
+      # Alerte si peu de requêtes (service peut être down ou arrêté)
+      - alert: LowRequestRate
+        expr: sum(rate(http_requests_total[5m])) < 0.1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Taux de requête faible"
+          description: "Moins de 0.1 req/sec en moyenne. L'application peut être arrêtée ou peu utilisée."
+
+  - name: prometheus_alerts
+    interval: 30s
+    rules:
+      # Alerte si Prometheus lui-même est down
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus est inaccessible"
+          description: "Le serveur Prometheus n'est pas accessible."
+
+      # Alerte si les données Prometheus n'ont pas été mises à jour
+      - alert: StalePrometheusData
+        expr: |
+          (time() - timestamp(up{job="prometheus"})) > 300
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Les données Prometheus sont obsolètes"
+          description: "Prometheus n'a pas été mis à jour depuis plus de 5 minutes."

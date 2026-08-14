@@ -1,0 +1,61 @@
+# Configuration AlertManager
+
+global:
+  resolve_timeout: 5m
+
+# Template des notifications
+templates:
+  - '/etc/alertmanager/templates/email.tmpl'
+
+# Configuration du routage des alertes
+route:
+  # Destination par défaut
+  receiver: 'default'
+  group_by: ['alertname', 'job']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 24h
+  routes:
+    # Alertes critiques
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 1s
+      repeat_interval: 1h
+
+    # Alertes warnings
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      group_wait: 5s
+      repeat_interval: 4h
+
+# Destinations/récepteurs pour les notifications
+receivers:
+  # Slack (exemple - à configurer)
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:5001/'  # Webhook local pour logs
+        send_resolved: true
+
+  # Alertes critiques - webhook spécifique
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://localhost:5001/critical'
+        send_resolved: true
+
+  # Alertes warnings
+  - name: 'warnings'
+    webhook_configs:
+      - url: 'http://localhost:5001/warnings'
+        send_resolved: true
+
+# Configuration de l'inhibition des alertes
+inhibit_rules:
+  # Si une alerte AppDown est déclenchée, inhiber les autres alertes de cette app
+  - source_match:
+      severity: 'critical'
+      alertname: 'AppDown'
+    target_match_re:
+      severity: 'warning|info'
+    equal: ['job', 'instance']

@@ -1,0 +1,20 @@
+{
+  "name": "prometheus-app",
+  "version": "1.0.0",
+  "description": "Application Node.js avec métriques Prometheus",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["prometheus", "monitoring", "metrics"],
+  "author": "DevOps Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^15.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
