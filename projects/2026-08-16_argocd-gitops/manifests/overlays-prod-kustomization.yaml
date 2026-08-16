@@ -1,0 +1,89 @@
+---
+# Kustomize Overlay for Production Environment
+# Usage: kustomize build overlays/prod | kubectl apply -f -
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: sample-app-prod
+
+# Base reference
+bases:
+  - ../
+
+# Namespace override
+namespace: production
+
+# Higher replicas for production
+replicas:
+  - name: sample-app
+    count: 5
+
+# Patch for production environment with enhanced resources
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: sample-app
+    spec:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 2
+          maxUnavailable: 0
+      template:
+        spec:
+          containers:
+          - name: app
+            resources:
+              requests:
+                cpu: 250m
+                memory: 256Mi
+              limits:
+                cpu: 1000m
+                memory: 1Gi
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - sample-app
+                topologyKey: kubernetes.io/hostname
+
+# ConfigMap patch for production
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - environment=production
+      - log_level=warn
+      - max_connections=1000
+
+# PDB for production (Pod Disruption Budget)
+# This ensures at least 3 pods are always running
+resources:
+  - - apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: sample-app
+      spec:
+        minAvailable: 3
+        selector:
+          matchLabels:
+            app: sample-app
+
+# Common labels for production
+commonLabels:
+  env: production
+  tier: application
+  criticality: high
+
+# Annotations
+commonAnnotations:
+  environment: production
+  managed-by: argocd
+  sla: "99.95"

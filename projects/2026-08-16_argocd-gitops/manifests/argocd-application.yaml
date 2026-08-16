@@ -1,0 +1,146 @@
+---
+# ArgoCD Application Manifest
+# This defines how ArgoCD should manage the application
+# Apply this to your ArgoCD instance to create an application
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app
+  namespace: argocd
+  # Finalizers ensure proper cleanup
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The project the application belongs to
+  project: default
+
+  # Source configuration - where to get the manifests from
+  source:
+    repoURL: https://github.com/jaouadsiouahe1978/claude-devops-tools
+    targetRevision: main
+    path: projects/2026-08-16_argocd-gitops/manifests
+
+    # Use Kustomize to build manifests
+    kustomize:
+      version: v5.0.0
+      # Enable replicas override
+      replicas:
+      - name: sample-app
+        count: 3
+
+  # Destination - where to deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  # Sync Policy configuration
+  syncPolicy:
+    # Automatic sync on Git changes
+    automated:
+      prune: true      # Delete resources not in Git
+      selfHeal: true   # Auto-sync if state drifts
+      # allowEmpty: false  # Don't sync if no manifests found
+
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true  # Create namespace if doesn't exist
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+
+    # Retry policy on sync failures
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Revision history limit
+  revisionHistoryLimit: 10
+
+  # Health assessment rules
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/metadata/annotations
+
+---
+# ArgoCD Application for Development
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/jaouadsiouahe1978/claude-devops-tools
+    targetRevision: main
+    path: projects/2026-08-16_argocd-gitops/manifests
+    kustomize:
+      version: v5.0.0
+      replicas:
+      - name: sample-app
+        count: 1
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+
+  syncPolicy:
+    automated:
+      prune: false     # Don't prune in dev
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# ArgoCD Application for Production
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/jaouadsiouahe1978/claude-devops-tools
+    targetRevision: main
+    path: projects/2026-08-16_argocd-gitops/manifests
+    kustomize:
+      version: v5.0.0
+      replicas:
+      - name: sample-app
+        count: 5
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+
+  syncPolicy:
+    # Manual sync for production (safer)
+    automated:
+      prune: false
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=false  # Skip validation for safety
+
+    # Slower retry for production
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+
+  revisionHistoryLimit: 20  # Keep more history for production

@@ -1,0 +1,71 @@
+# ArgoCD GitOps Project .gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Kubernetes
+kubeconfig
+kubeconfig.*
+
+# Secrets (never commit secrets!)
+*-secret.yaml
+*.secret
+*.key
+*.pem
+credentials.json
+
+# Build outputs
+dist/
+build/
+*.o
+*.a
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Helm
+charts/*/charts/
+Chart.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node modules (if applicable)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Terraform (if applicable)
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl

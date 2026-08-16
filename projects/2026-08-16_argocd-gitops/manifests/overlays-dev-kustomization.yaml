@@ -1,0 +1,71 @@
+---
+# Kustomize Overlay for Development Environment
+# Usage: kustomize build overlays/dev | kubectl apply -f -
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: sample-app-dev
+
+# Base reference
+bases:
+  - ../
+
+# Namespace override
+namespace: dev
+
+# Patch replicas for dev (lower resources)
+replicas:
+  - name: sample-app
+    count: 1
+
+# Patch for dev environment
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: sample-app
+    spec:
+      template:
+        spec:
+          containers:
+          - name: app
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+
+# ConfigMap patch for dev
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - environment=development
+      - log_level=debug
+      - max_connections=50
+
+# Service patch for dev (use ClusterIP instead of LoadBalancer)
+patchesJson6902:
+  - target:
+      group: ""
+      version: v1
+      kind: Service
+      name: sample-app
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+
+# Common labels for dev
+commonLabels:
+  env: dev
+  tier: application
+
+# Annotations
+commonAnnotations:
+  environment: development
+  managed-by: argocd

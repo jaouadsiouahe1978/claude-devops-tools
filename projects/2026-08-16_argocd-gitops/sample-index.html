@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArgoCD GitOps Demo App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .status {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .info {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+            border-radius: 5px;
+        }
+
+        .info h2 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .info p {
+            color: #666;
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        code {
+            background: #ffe6e6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d32f2f;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .feature strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .feature p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .timestamp {
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 ArgoCD GitOps Demo</h1>
+        <p class="subtitle">Declarative Deployment Pipeline</p>
+
+        <div class="status">✅ Application Running</div>
+
+        <div class="info">
+            <h2>What is GitOps?</h2>
+            <p>
+                GitOps is an operational paradigm that takes DevOps best practices used for application
+                development (like version control, code review) and applies them to infrastructure
+                automation. <strong>Git is the single source of truth</strong> for your desired state.
+            </p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <strong>📝 Declarative</strong>
+                <p>Define desired state in Git</p>
+            </div>
+            <div class="feature">
+                <strong>🔄 Automated</strong>
+                <p>Continuous reconciliation</p>
+            </div>
+            <div class="feature">
+                <strong>📊 Observed</strong>
+                <p>Real-time status monitoring</p>
+            </div>
+            <div class="feature">
+                <strong>🛡️ Secure</strong>
+                <p>Pull-based, no external access</p>
+            </div>
+        </div>
+
+        <div class="info">
+            <h2>Deployment Flow</h2>
+            <p>
+                <code>Developer</code> → <code>Git Commit</code> → <code>ArgoCD</code> → <code>Kubernetes</code> → <code>Live App</code>
+            </p>
+            <p style="margin-top: 15px; font-style: italic;">
+                Modify your manifests, push to Git, and let ArgoCD handle the deployment automatically! 🎉
+            </p>
+        </div>
+
+        <div class="info">
+            <h2>Key Benefits</h2>
+            <ul style="list-style: none; text-align: left;">
+                <li>✅ Version-controlled everything</li>
+                <li>✅ Audit trail of all changes</li>
+                <li>✅ Easy rollback to any commit</li>
+                <li>✅ Disaster recovery from Git</li>
+                <li>✅ Multi-cluster support</li>
+                <li>✅ Self-healing systems</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>🧑‍💻 ArgoCD GitOps Project - 2026</p>
+            <p class="timestamp" id="timestamp"></p>
+        </div>
+    </div>
+
+    <script>
+        // Display current timestamp
+        const timestamp = new Date().toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        });
+        document.getElementById('timestamp').textContent = `Last updated: ${timestamp}`;
+    </script>
+</body>
+</html>

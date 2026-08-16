@@ -1,0 +1,41 @@
+# Optional: Docker image for ArgoCD testing environment
+# Contains ArgoCD CLI and useful tools for development
+
+FROM alpine:3.18
+
+LABEL maintainer="DevOps Team"
+LABEL description="ArgoCD development image with CLI tools"
+
+# Install required packages
+RUN apk add --no-cache \
+    bash \
+    curl \
+    wget \
+    git \
+    openssh-client \
+    kubectl \
+    helm \
+    yq \
+    jq
+
+# Download ArgoCD CLI
+ARG ARGOCD_VERSION=2.9.0
+RUN curl -sSL -o /usr/local/bin/argocd \
+    https://github.com/argoproj/argo-cd/releases/download/v${ARGOCD_VERSION}/argocd-linux-amd64 && \
+    chmod +x /usr/local/bin/argocd && \
+    argocd version --client
+
+# Download Kustomize
+RUN curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz | \
+    tar -xz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/kustomize
+
+# Set up working directory
+WORKDIR /workspace
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD argocd version --client || exit 1
+
+# Default command
+CMD ["/bin/bash"]

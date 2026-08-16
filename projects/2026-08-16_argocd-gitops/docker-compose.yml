@@ -1,0 +1,126 @@
+---
+# Docker Compose for local ArgoCD development
+# Note: This is for learning only. For production, use Kubernetes directly.
+
+version: '3.8'
+
+services:
+  # ArgoCD Server
+  argocd-server:
+    image: argoproj/argocd:latest
+    container_name: argocd-server
+    ports:
+      - "8080:8080"    # HTTP UI
+      - "8443:8443"    # HTTPS UI
+    environment:
+      - ARGOCD_INSECURE=true
+      - ARGOCD_SESSION_MAX_AGE=0h
+      - DISABLE_AUTH=true  # For development only!
+    volumes:
+      - argocd-data:/home/argocd/.local/share
+      - argocd-config:/home/argocd/.config
+    networks:
+      - argocd
+    command:
+      - /argocd-server
+      - --auth-mode=password
+      - --insecure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - redis
+      - argocd-repo-server
+      - argocd-controller
+
+  # ArgoCD Repo Server
+  argocd-repo-server:
+    image: argoproj/argocd:latest
+    container_name: argocd-repo-server
+    environment:
+      - ARGOCD_PLUGINS_ENABLED=true
+    volumes:
+      - argocd-repo:/home/argocd/.config/argocd/repo
+    networks:
+      - argocd
+    command:
+      - /argocd-repo-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ArgoCD Controller
+  argocd-controller:
+    image: argoproj/argocd:latest
+    container_name: argocd-controller
+    environment:
+      - ARGOCD_RECONCILIATION_TIMEOUT=180s
+    volumes:
+      - argocd-data:/home/argocd/.local/share
+    networks:
+      - argocd
+    command:
+      - /argocd-application-controller
+      - --status-processor-segments=4
+      - --operation-processors=8
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis (used by ArgoCD)
+  redis:
+    image: redis:7-alpine
+    container_name: argocd-redis
+    networks:
+      - argocd
+    volumes:
+      - redis-data:/data
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Example: Simple Nginx app for testing
+  sample-app:
+    image: nginx:1.24-alpine
+    container_name: sample-app
+    ports:
+      - "8000:80"
+    networks:
+      - argocd
+    environment:
+      - NGINX_HOST=sample-app
+      - NGINX_PORT=80
+    volumes:
+      - ./sample-index.html:/usr/share/nginx/html/index.html:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  argocd-data:
+    driver: local
+  argocd-config:
+    driver: local
+  argocd-repo:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  argocd:
+    driver: bridge

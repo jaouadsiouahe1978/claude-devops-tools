@@ -1,0 +1,34 @@
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+  labels:
+    app: sample-app
+data:
+  environment: "production"
+  app.conf: |
+    # Application Configuration
+    server {
+      listen 80;
+      server_name _;
+
+      location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+      }
+
+      location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+      }
+
+      error_page 404 /404.html;
+      error_page 500 502 503 504 /50x.html;
+    }
+  version: "1.0.0"
+  log_level: "info"
+  max_connections: "100"

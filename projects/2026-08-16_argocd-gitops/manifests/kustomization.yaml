@@ -1,0 +1,56 @@
+---
+# Kustomization base configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: sample-app-base
+  namespace: default
+
+# Resources to include
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: sample-app
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/managed-by: argocd
+
+# Common annotations
+commonAnnotations:
+  gitops/source: argocd
+  gitops/repository: https://github.com/jaouadsiouahe1978/claude-devops-tools
+
+# Namespace
+namespace: default
+
+# Image replacement (useful for different environments)
+images:
+  - name: nginx
+    newName: nginx
+    newTag: "1.24-alpine"
+
+# Replicas can be overridden
+replicas:
+  - name: sample-app
+    count: 3
+
+# Vars for dynamic substitution
+vars:
+  - name: APP_NAME
+    objref:
+      kind: Deployment
+      name: sample-app
+      apiVersion: apps/v1
+    fieldref:
+      fieldpath: metadata.name
+  - name: REPLICAS
+    objref:
+      kind: Deployment
+      name: sample-app
+      apiVersion: apps/v1
+    fieldref:
+      fieldpath: spec.replicas
