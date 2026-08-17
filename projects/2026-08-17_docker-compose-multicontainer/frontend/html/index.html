@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Compose Multi-Container App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐳 Docker Compose Application</h1>
+            <p>Multi-Container Web Application</p>
+        </header>
+
+        <main>
+            <!-- Status Section -->
+            <section class="status-section">
+                <h2>Service Status</h2>
+                <div id="status-container" class="status-container">
+                    <div class="status-item">
+                        <span class="status-label">Backend API</span>
+                        <span id="backend-status" class="status-badge loading">Checking...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Database</span>
+                        <span id="db-status" class="status-badge loading">Checking...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Items Management Section -->
+            <section class="items-section">
+                <h2>Items Manager</h2>
+
+                <!-- Create Item Form -->
+                <div class="form-section">
+                    <h3>Add New Item</h3>
+                    <form id="create-form">
+                        <div class="form-group">
+                            <label for="title">Title *</label>
+                            <input type="text" id="title" placeholder="Item title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" placeholder="Item description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="status">Status</label>
+                            <select id="status">
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Item</button>
+                    </form>
+                </div>
+
+                <!-- Items List -->
+                <div class="list-section">
+                    <h3>Items List</h3>
+                    <div id="items-container" class="items-container">
+                        <p class="loading">Loading items...</p>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="stats-section">
+                    <h3>Statistics</h3>
+                    <div id="stats-container" class="stats-container">
+                        <div class="stat-box">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Total Items</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Pending</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">In Progress</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Docker Info Section -->
+            <section class="info-section">
+                <h2>Architecture Info</h2>
+                <div class="info-box">
+                    <h3>Services</h3>
+                    <ul>
+                        <li><strong>Frontend:</strong> Nginx (Reverse Proxy & Static Files)</li>
+                        <li><strong>Backend:</strong> Python Flask API</li>
+                        <li><strong>Database:</strong> PostgreSQL (Data Persistence)</li>
+                    </ul>
+                </div>
+                <div class="info-box">
+                    <h3>Network</h3>
+                    <ul>
+                        <li><strong>HTTP Port:</strong> 80 (Nginx)</li>
+                        <li><strong>Backend Port:</strong> 5000 (Flask)</li>
+                        <li><strong>Database Port:</strong> 5432 (PostgreSQL)</li>
+                        <li><strong>Network Mode:</strong> Bridge (DNS-based service discovery)</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>🚀 Docker Compose Multi-Container Application | DevOps Learning Project</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
