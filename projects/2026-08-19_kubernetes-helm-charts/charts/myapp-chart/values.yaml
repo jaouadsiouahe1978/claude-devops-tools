@@ -1,0 +1,139 @@
+# Default values for myapp Helm chart
+
+# Global settings
+replicaCount: 2
+environment: development
+
+# Frontend configuration
+frontend:
+  enabled: true
+  image:
+    repository: nginx
+    pullPolicy: IfNotPresent
+    tag: "1.24-alpine"
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  replicas: 2
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# Backend configuration
+backend:
+  enabled: true
+  image:
+    repository: python
+    pullPolicy: IfNotPresent
+    tag: "3.11-slim"
+
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+
+  replicas: 2
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+  env:
+    - name: LOG_LEVEL
+      value: "INFO"
+    - name: DB_HOST
+      value: "postgres"
+    - name: DB_PORT
+      value: "5432"
+
+# Database configuration
+database:
+  enabled: true
+  type: postgres
+  image:
+    repository: postgres
+    tag: "15-alpine"
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  config:
+    POSTGRES_DB: "myappdb"
+    POSTGRES_USER: "appuser"
+    POSTGRES_PASSWORD: "changeme"
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: "standard"
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: "myapp.local"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.local
+
+# ConfigMap values
+config:
+  LOG_FORMAT: "json"
+  MAX_CONNECTIONS: "100"
+  CACHE_TTL: "3600"
+
+# Labels and annotations
+labels:
+  app: "myapp"
+  version: "1.0"
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

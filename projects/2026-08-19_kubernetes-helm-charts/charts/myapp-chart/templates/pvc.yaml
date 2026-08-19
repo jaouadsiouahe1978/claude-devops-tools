@@ -1,0 +1,20 @@
+{{- if and .Values.database.enabled .Values.database.persistence.enabled }}
+---
+# Database Persistent Volume Claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "myapp.fullname" . }}-db-pvc
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.database.persistence.size }}
+  {{- if .Values.database.persistence.storageClassName }}
+  storageClassName: {{ .Values.database.persistence.storageClassName }}
+  {{- end }}
+{{- end }}
