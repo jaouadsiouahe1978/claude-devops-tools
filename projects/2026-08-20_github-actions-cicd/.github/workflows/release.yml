@@ -1,0 +1,225 @@
+name: Release & Versioning
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  # Auto-detect changes and determine version bump
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should-release: ${{ steps.version.outputs.should-release }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          if [ -f VERSION ]; then
+            VERSION=$(cat VERSION)
+          else
+            VERSION="0.0.0"
+          fi
+          echo "current=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Determine next version
+        id: version
+        run: |
+          CURRENT_VERSION=${{ steps.current.outputs.current }}
+          echo "Current version: $CURRENT_VERSION"
+
+          # Parse version parts
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]:-0}
+          MINOR=${VERSION_PARTS[1]:-0}
+          PATCH=${VERSION_PARTS[2]:-0}
+
+          # Determine bump type
+          BUMP_TYPE="${{ github.event.inputs.bump }}"
+          if [ -z "$BUMP_TYPE" ] || [ "$BUMP_TYPE" = "null" ]; then
+            # Auto-detect from commit messages
+            if git log -1 --format=%B | grep -q "BREAKING CHANGE:"; then
+              BUMP_TYPE="major"
+            elif git log -1 --format=%B | grep -qE "^feat!:"; then
+              BUMP_TYPE="major"
+            elif git log -1 --format=%B | grep -q "^feat:"; then
+              BUMP_TYPE="minor"
+            else
+              BUMP_TYPE="patch"
+            fi
+          fi
+
+          echo "Bump type: $BUMP_TYPE"
+
+          # Calculate new version
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+
+          # Check if version changed
+          if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+            echo "should-release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-release=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Output results
+        run: |
+          echo "## Version Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Current**: ${{ steps.current.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Should Release**: ${{ steps.version.outputs.should-release }}" >> $GITHUB_STEP_SUMMARY
+
+  # Create release if version bumped
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-release == 'true'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ needs.detect-changes.outputs.version }}" > VERSION
+          cat VERSION
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.detect-changes.outputs.version }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --oneline --format="%h %s" | head -20)
+          else
+            COMMITS=$(git log $LAST_TAG..HEAD --oneline --format="%h %s")
+          fi
+
+          # Separate commits by type
+          FEATURES=$(echo "$COMMITS" | grep "^.* feat:" || true)
+          FIXES=$(echo "$COMMITS" | grep "^.* fix:" || true)
+          OTHERS=$(echo "$COMMITS" | grep -v "^.* feat:\|^.* fix:" || true)
+
+          # Build changelog
+          CHANGELOG="## What's Changed\n"
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG="$CHANGELOG\n### ✨ Features\n$FEATURES\n"
+          fi
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="$CHANGELOG\n### 🐛 Fixes\n$FIXES\n"
+          fi
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG="$CHANGELOG\n### 📝 Other Changes\n$OTHERS\n"
+          fi
+
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Commit VERSION update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore: bump version to ${{ needs.detect-changes.outputs.version }}" || true
+          git push || true
+
+      - name: Create Git tag
+        run: |
+          VERSION="${{ needs.detect-changes.outputs.version }}"
+          git tag -a v$VERSION -m "Release v$VERSION" || true
+          git push origin --tags || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.detect-changes.outputs.version }}
+          name: Release v${{ needs.detect-changes.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Announce release
+        run: |
+          echo "## Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Version v${{ needs.detect-changes.outputs.version }} released" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.detect-changes.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+
+  # Notify release
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [detect-changes, create-release]
+    if: needs.detect-changes.outputs.should-release == 'true'
+
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'custom'
+          custom_payload: |
+            {
+              text: "🎉 New Release v${{ needs.detect-changes.outputs.version }}",
+              attachments: [{
+                color: 'good',
+                fields: [{
+                  title: 'Version',
+                  value: 'v${{ needs.detect-changes.outputs.version }}',
+                  short: true
+                }, {
+                  title: 'Repository',
+                  value: '${{ github.repository }}',
+                  short: true
+                }]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true

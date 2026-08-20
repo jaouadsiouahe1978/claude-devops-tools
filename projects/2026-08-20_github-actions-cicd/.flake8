@@ -1,0 +1,41 @@
+[flake8]
+# Maximum line length
+max-line-length = 100
+
+# Ignore specific errors
+# E203: whitespace before ':'
+# E501: line too long (handled by black)
+# W503: line break before binary operator
+# W504: line break after binary operator
+ignore = E203, E501, W503, W504
+
+# Exclude directories
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    .eggs,
+    build,
+    dist,
+    .tox,
+    .pytest_cache,
+    .mypy_cache,
+    htmlcov,
+
+# Files to include
+filename = *.py
+
+# Maximum complexity for cyclomatic complexity check
+max-complexity = 10
+
+# Show source code for violations
+show-source = True
+
+# Show statistics
+statistics = True
+
+# Per-file ignores
+per-file-ignores =
+    __init__.py:F401
+    tests/*:F401,F811
