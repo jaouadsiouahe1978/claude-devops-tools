@@ -1,0 +1,559 @@
+# ArgoCD Installation Manifests
+# Complete setup for ArgoCD v2.8+ on Kubernetes
+# This includes all ArgoCD components and configurations
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/part-of: argocd
+
+---
+# ServiceAccount for ArgoCD Server
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server
+  namespace: argocd
+
+---
+# ServiceAccount for ArgoCD Application Controller
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+  name: argocd-application-controller
+  namespace: argocd
+
+---
+# ServiceAccount for ArgoCD Repository Server
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+  namespace: argocd
+
+---
+# ConfigMap - ArgoCD Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+  name: argocd-cmd-params-cm
+  namespace: argocd
+data:
+  # Argo CD Server configuration
+  server.insecure: "false"
+  server.grpc.web: "true"
+
+  # Repository Server configuration
+  reposerver: argocd-repo-server:8081
+  reposerver.parallelismlimit: "0"
+
+  # Application configuration
+  application.instanceLabelKey: argocd.argoproj.io/instance
+
+  # Webhook configuration
+  webhook.github.secret: ""
+
+  # Prometheus metrics
+  metrics.enabled: "true"
+
+---
+# ConfigMap - ArgoCD RBAC Config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  # Default policy
+  policy.default: role:readonly
+
+  # Admin policy
+  policy.csv: |
+    p, role:admin, applications, *, */*, allow
+    p, role:admin, applications, sync, */*, allow
+    p, role:admin, repositories, *, *, allow
+    p, role:admin, clusters, get, *, allow
+    p, role:admin, accounts, *, *, allow
+
+    p, role:readonly, applications, get, */*, allow
+    p, role:readonly, repositories, get, *, allow
+    p, role:readonly, clusters, get, *, allow
+
+    g, admin, role:admin
+
+  # Scopes
+  scopes: "[groups]"
+
+---
+# ClusterRole for ArgoCD Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - events
+  verbs:
+  - create
+  - list
+
+---
+# ClusterRoleBinding for ArgoCD Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server
+subjects:
+- kind: ServiceAccount
+  name: argocd-server
+  namespace: argocd
+
+---
+# ClusterRole for ArgoCD Application Controller
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+  name: argocd-application-controller
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+
+---
+# ClusterRoleBinding for ArgoCD Application Controller
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+  name: argocd-application-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-application-controller
+subjects:
+- kind: ServiceAccount
+  name: argocd-application-controller
+  namespace: argocd
+
+---
+# ClusterRole for ArgoCD Repository Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+# ClusterRoleBinding for ArgoCD Repository Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-repo-server
+subjects:
+- kind: ServiceAccount
+  name: argocd-repo-server
+  namespace: argocd
+
+---
+# Secret - ArgoCD Server Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-secret
+    app.kubernetes.io/part-of: argocd
+  name: argocd-secret
+  namespace: argocd
+type: Opaque
+data:
+  # base64 encoded 'password'
+  admin.password: cGFzc3dvcmQ=
+  admin.passwordMtime: MjAyNDA4MjExNjAwMDA=
+
+---
+# Service - ArgoCD Server
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server
+  namespace: argocd
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: argocd-server
+  type: ClusterIP
+
+---
+# Service - ArgoCD Repository Server
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+  namespace: argocd
+spec:
+  ports:
+  - name: server
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
+  selector:
+    app.kubernetes.io/name: argocd-repo-server
+  type: ClusterIP
+
+---
+# Service - ArgoCD Metrics
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/name: argocd-metrics
+    app.kubernetes.io/part-of: argocd
+  name: argocd-metrics
+  namespace: argocd
+spec:
+  ports:
+  - name: metrics
+    port: 8082
+    protocol: TCP
+    targetPort: 8082
+  selector:
+    app.kubernetes.io/name: argocd-metrics
+  type: ClusterIP
+
+---
+# Deployment - ArgoCD Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server
+  namespace: argocd
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-server
+    spec:
+      serviceAccountName: argocd-server
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - argocd-server
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - name: argocd-server
+        image: quay.io/argoproj/argocd:v2.8.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        env:
+        - name: ARGOCD_SERVER_INSECURE
+          valueFrom:
+            configMapKeyRef:
+              name: argocd-cmd-params-cm
+              key: server.insecure
+        - name: ARGOCD_SERVER_GRPC_WEB
+          valueFrom:
+            configMapKeyRef:
+              name: argocd-cmd-params-cm
+              key: server.grpc.web
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      volumes:
+      - emptyDir: {}
+        name: tmp
+
+---
+# Deployment - ArgoCD Repository Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+  namespace: argocd
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-repo-server
+    spec:
+      serviceAccountName: argocd-repo-server
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - argocd-repo-server
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - name: argocd-repo-server
+        image: quay.io/argoproj/argocd:v2.8.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+          name: server
+        - containerPort: 8084
+          name: metrics
+        env:
+        - name: ARGOCD_RECONCILIATION_TIMEOUT
+          value: 180s
+        livenessProbe:
+          tcpSocket:
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      volumes:
+      - emptyDir: {}
+        name: tmp
+
+---
+# Deployment - ArgoCD Application Controller
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+  name: argocd-application-controller
+  namespace: argocd
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-application-controller
+    spec:
+      serviceAccountName: argocd-application-controller
+      containers:
+      - name: argocd-application-controller
+        image: quay.io/argoproj/argocd:v2.8.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+          name: metrics
+        env:
+        - name: ARGOCD_CONTROLLER_REPLICAS
+          value: "1"
+        - name: ARGOCD_APPLICATION_CONTROLLER_REPLICAS
+          value: "1"
+        - name: ARGOCD_REPOSERVER_PARALLELISM_LIMIT
+          value: "10"
+        livenessProbe:
+          tcpSocket:
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      volumes:
+      - emptyDir: {}
+        name: tmp
+
+---
+# PersistentVolumeClaim for ArgoCD
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/part-of: argocd
+  name: argocd-storage
+  namespace: argocd
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# ServiceMonitor for Prometheus (optional)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-metrics
+    app.kubernetes.io/part-of: argocd
+  name: argocd-metrics
+  namespace: argocd
+spec:
+  endpoints:
+  - interval: 30s
+    port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-metrics

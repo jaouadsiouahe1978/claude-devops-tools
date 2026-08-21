@@ -1,0 +1,310 @@
+# ArgoCD Application - Guestbook Example
+# This demonstrates a simple application deployment via ArgoCD
+# The application is defined in a separate Git repository
+
+---
+# Namespace for Guestbook
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guestbook
+  labels:
+    app.kubernetes.io/name: guestbook
+    app.kubernetes.io/instance: production
+
+---
+# ArgoCD Application CRD
+# This tells ArgoCD how to deploy the guestbook application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: guestbook
+    app.kubernetes.io/instance: production
+spec:
+  # Project name (must exist in ArgoCD)
+  project: default
+
+  # Source configuration (where to pull from)
+  source:
+    # Git repository URL
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    # Branch/tag/commit to follow
+    targetRevision: HEAD
+    # Path within the repository
+    path: guestbook
+
+  # Destination configuration (where to deploy)
+  destination:
+    # Kubernetes cluster (local cluster)
+    server: https://kubernetes.default.svc
+    # Target namespace
+    namespace: guestbook
+
+  # Sync policy configuration
+  syncPolicy:
+    # Automated sync: ArgoCD automatically applies changes
+    automated:
+      # Prune: Delete resources that are no longer in Git
+      prune: true
+      # SelfHeal: Override manual Kubernetes changes
+      selfHeal: true
+      # Allow empty: Allow sync even if Git has no manifests
+      allowEmpty: false
+
+    # Sync options
+    syncOptions:
+    # Create namespace if it doesn't exist
+    - CreateNamespace=true
+    # Validate manifests using kubectl
+    - Validate=true
+    # Prefer server-side apply (for large manifests)
+    - ServerSideApply=true
+
+  # Revision history limits
+  revisionHistoryLimit: 10
+
+  # Notifications (optional)
+  info:
+  - name: 'Documentation'
+    value: 'https://github.com/argoproj/argocd-example-apps'
+  - name: 'Repository'
+    value: 'https://github.com/argoproj/argocd-example-apps'
+
+---
+# Service to expose Guestbook UI
+apiVersion: v1
+kind: Service
+metadata:
+  name: guestbook-ui
+  namespace: guestbook
+  labels:
+    app: guestbook-ui
+spec:
+  selector:
+    app: guestbook-ui
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+
+---
+# Deployment for Guestbook Frontend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guestbook-ui
+  namespace: guestbook
+  labels:
+    app: guestbook-ui
+    version: v1
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: guestbook-ui
+  template:
+    metadata:
+      labels:
+        app: guestbook-ui
+        version: v1
+    spec:
+      containers:
+      - name: guestbook-ui
+        image: gcr.io/heptio-images/ks-guestbook-demo:0.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: REDIS_MASTER_SERVICE_HOST
+          value: "redis-master.guestbook.svc.cluster.local"
+        - name: REDIS_MASTER_SERVICE_PORT
+          value: "6379"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+---
+# Service for Redis Master
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: guestbook
+  labels:
+    app: redis
+    tier: backend
+    role: master
+spec:
+  selector:
+    app: redis
+    tier: backend
+    role: master
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+
+---
+# Deployment for Redis Master
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+  namespace: guestbook
+  labels:
+    app: redis
+    tier: backend
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      tier: backend
+      role: master
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: backend
+        role: master
+    spec:
+      containers:
+      - name: master
+        image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+          name: redis
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+
+---
+# NetworkPolicy for Guestbook
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: guestbook-network-policy
+  namespace: guestbook
+spec:
+  podSelector:
+    matchLabels:
+      app: guestbook-ui
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+---
+# HorizontalPodAutoscaler for Guestbook UI
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: guestbook-ui-hpa
+  namespace: guestbook
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: guestbook-ui
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: guestbook-ui-pdb
+  namespace: guestbook
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: guestbook-ui
