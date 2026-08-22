@@ -1,0 +1,113 @@
+# Crontab Configuration pour Monitoring et Log Rotation
+# Installation:
+#   sudo cp config/crontab.txt /etc/cron.d/monitoring
+#   ou pour le crontab utilisateur:
+#   crontab -e
+#   puis coller le contenu (attention: ajuster les chemins)
+
+# ============================================================================
+# FORMAT CRONTAB:
+# minute (0-59)
+# |   heure (0-23)
+# |   |   jour du mois (1-31)
+# |   |   |   mois (1-12)
+# |   |   |   |   jour de la semaine (0-6, 0=dimanche)
+# |   |   |   |   |   commande à exécuter
+# |   |   |   |   |   |
+# v   v   v   v   v   v
+
+# ============================================================================
+# MONITORING SYSTÈME
+# ============================================================================
+
+# Vérification de la santé du système toutes les 5 minutes
+*/5 * * * * root /usr/local/bin/system_health.sh >> /var/log/monitoring/system_health_cron.log 2>&1
+
+# Vérification du disque toutes les 10 minutes
+*/10 * * * * root /usr/local/bin/check_disk.sh >> /var/log/monitoring/disk_check_cron.log 2>&1
+
+# Vérification de la mémoire toutes les 15 minutes
+*/15 * * * * root /usr/local/bin/check_memory.sh >> /var/log/monitoring/memory_check_cron.log 2>&1
+
+# Surveillance des logs toutes les 30 minutes
+*/30 * * * * root /usr/local/bin/log_monitor.sh >> /var/log/monitoring/log_monitor_cron.log 2>&1
+
+# ============================================================================
+# LOG ROTATION
+# ============================================================================
+
+# Rotation des logs à 2:00 AM chaque jour
+0 2 * * * root /usr/local/bin/rotate_logs.sh >> /var/log/monitoring/rotate_logs_cron.log 2>&1
+
+# ============================================================================
+# COMPRESSION DES LOGS
+# ============================================================================
+
+# Compression des logs anciens (>7 jours) à 3:00 AM chaque jour
+0 3 * * * root /usr/local/bin/compress_old_logs.sh 7 >> /var/log/monitoring/compress_logs_cron.log 2>&1
+
+# ============================================================================
+# NETTOYAGE DES LOGS
+# ============================================================================
+
+# Nettoyage des logs (>30 jours) à 4:00 AM chaque dimanche
+0 4 * * 0 root /usr/local/bin/cleanup_logs.sh 30 >> /var/log/monitoring/cleanup_logs_cron.log 2>&1
+
+# ============================================================================
+# NETTOYAGE DE MAINTENANCE
+# ============================================================================
+
+# Nettoyage des fichiers de logs cron vides (chaque dimanche)
+30 4 * * 0 root find /var/log/monitoring -name "*_cron.log" -size 0 -delete
+
+# Rotation des logs de monitoring du monitoring lui-même (chaque semaine)
+0 5 * * 0 root /usr/local/bin/rotate_logs.sh >> /var/log/monitoring/monitoring_rotate.log 2>&1
+
+# ============================================================================
+# RAPPORTS ET STATISTIQUES
+# ============================================================================
+
+# Rapport d'espace disque chaque lundi à 9:00 AM
+0 9 * * 1 root df -h | mail -s "Rapport d'espace disque du $(hostname)" admin@localhost 2>/dev/null
+
+# Rapport de mémoire chaque mercredi à 9:00 AM
+0 9 * * 3 root free -h | mail -s "Rapport mémoire du $(hostname)" admin@localhost 2>/dev/null
+
+# ============================================================================
+# NOTES IMPORTANTES
+# ============================================================================
+
+# 1. Remplacer "root" par votre utilisateur si nécessaire
+# 2. Adapter les chemins /usr/local/bin/ si vos scripts sont ailleurs
+# 3. Adapter l'email "admin@localhost" pour recevoir les alertes
+# 4. Assurez-vous que les scripts sont exécutables (chmod +x)
+# 5. Les logs cron s'enregistrent dans /var/log/monitoring/
+# 6. Vérifier que le dossier /var/log/monitoring existe et a les bonnes permissions
+
+# ============================================================================
+# COMMANDES UTILES
+# ============================================================================
+
+# Afficher le crontab actuel:
+#   sudo crontab -l
+#
+# Éditer le crontab root:
+#   sudo crontab -e
+#
+# Installer les scripts:
+#   sudo cp scripts/*.sh /usr/local/bin/
+#   sudo chmod +x /usr/local/bin/*.sh
+#
+# Installer le crontab:
+#   sudo cp config/crontab.txt /etc/cron.d/monitoring
+#   ou manuellement:
+#   sudo crontab -e
+#
+# Tester un script manuellement:
+#   sudo /usr/local/bin/system_health.sh
+#
+# Vérifier la syntax crontab:
+#   crontab -l | grep -v '^#'
+#
+# Voir l'historique des exécutions:
+#   sudo tail -f /var/log/monitoring/*.log

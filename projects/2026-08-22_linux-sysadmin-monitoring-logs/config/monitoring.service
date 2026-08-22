@@ -1,0 +1,111 @@
+[Unit]
+Description=System Monitoring and Log Management Service
+Documentation=man:monitoring(8)
+After=network.target
+Wants=monitoring.timer
+
+# Redémarrer le service s'il crash
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+# Type de service
+Type=oneshot
+User=root
+Group=root
+
+# Chemins et répertoires
+WorkingDirectory=/var/log/monitoring
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=monitoring
+
+# Script principal à exécuter
+ExecStart=/usr/local/bin/system_health.sh
+
+# Permissions des fichiers créés
+UMask=0022
+
+# Limites de ressources
+MemoryLimit=256M
+CPUQuota=50%
+
+# Timeouts
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+# Logging
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# ============================================================================
+# OPTIONS DE SÉCURITÉ
+# ============================================================================
+
+# Isoler le système de fichiers
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# Monter les répertoires en lecture seule sauf les nécessaires
+ProtectSystem=strict
+ProtectHome=yes
+
+# Protections supplémentaires
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+
+# Restrictions sur les appels système
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+
+[Install]
+WantedBy=multi-user.target
+
+# ============================================================================
+# INSTALLATION ET UTILISATION
+# ============================================================================
+
+# Installer le service:
+#   sudo cp monitoring.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#
+# Activer le service:
+#   sudo systemctl enable monitoring.service
+#
+# Démarrer le service manuellement:
+#   sudo systemctl start monitoring.service
+#
+# Voir le statut:
+#   sudo systemctl status monitoring.service
+#
+# Voir les logs:
+#   sudo journalctl -u monitoring.service -f
+#   sudo journalctl -u monitoring.service --since "1 hour ago"
+#
+# Désactiver:
+#   sudo systemctl disable monitoring.service
+#
+# Arrêter:
+#   sudo systemctl stop monitoring.service
+
+# ============================================================================
+# UTILISATION AVEC TIMER (exécution programmée)
+# ============================================================================
+
+# Pour utiliser ce service avec un timer, créer monitoring.timer:
+#   [Unit]
+#   Description=Run System Monitoring Periodically
+#   Requires=monitoring.service
+#
+#   [Timer]
+#   OnBootSec=1min
+#   OnUnitActiveSec=5min
+#   Persistent=true
+#
+#   [Install]
+#   WantedBy=timers.target
+#
+# Puis:
+#   sudo systemctl enable --now monitoring.timer
+#   sudo systemctl list-timers
