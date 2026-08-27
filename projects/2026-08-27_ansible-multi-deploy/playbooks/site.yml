@@ -1,0 +1,77 @@
+---
+# Playbook Principal - Orchestration complète de l'infrastructure
+# Exécute tous les rôles sur les serveurs appropriés
+
+- name: "Configure infrastructure - Phase 1: Base commune"
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/webservers.yml
+    - ../inventory/group_vars/dbservers.yml
+  roles:
+    - common
+  tags:
+    - common
+    - base
+
+- name: "Configure Web Servers - Phase 2: Déploiement web"
+  hosts: webservers
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/webservers.yml
+  roles:
+    - webserver
+  tags:
+    - webserver
+    - web
+    - app
+
+- name: "Configure Database Servers - Phase 3: Base de données"
+  hosts: dbservers
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/dbservers.yml
+  roles:
+    - database
+  tags:
+    - database
+    - db
+
+- name: "Verification - Phase 4: Vérification complète"
+  hosts: all
+  gather_facts: no
+  tags:
+    - verify
+    - check
+  tasks:
+    - name: "Check connectivity on all hosts"
+      ping:
+
+    - name: "Get system uptime"
+      shell: uptime
+      register: uptime_result
+      changed_when: false
+
+    - name: "Display uptime"
+      debug:
+        msg: "{{ inventory_hostname }}: {{ uptime_result.stdout }}"
+
+    - name: "Display deployment summary"
+      debug:
+        msg: |
+          ╔═════════════════════════════════════════════════════════════╗
+          ║                 DEPLOYMENT SUMMARY                          ║
+          ╚═════════════════════════════════════════════════════════════╝
+
+          🖥️  Webservers:
+          {% for host in groups['webservers'] %}
+            - {{ host }}
+          {% endfor %}
+
+          🗄️  Databases:
+          {% for host in groups['dbservers'] %}
+            - {{ host }}
+          {% endfor %}
+
+          ✓ Infrastructure déployée avec succès!
+      run_once: yes

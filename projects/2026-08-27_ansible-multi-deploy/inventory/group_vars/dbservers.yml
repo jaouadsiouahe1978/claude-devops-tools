@@ -1,0 +1,48 @@
+# Variables pour le groupe dbservers
+
+# PostgreSQL
+postgres_version: "14"
+postgres_packages:
+  - postgresql
+  - postgresql-contrib
+  - python3-psycopg2
+
+# Utilisateur et base de données
+db_user: appuser
+db_password: "{{ vault_db_password }}"  # À définir dans ansible/group_vars/vault.yml
+db_name: app_db
+db_host: "{{ inventory_hostname }}"
+db_port: 5432
+
+# Configuration PostgreSQL
+postgres_config:
+  max_connections: 200
+  shared_buffers: "256MB"
+  effective_cache_size: "1GB"
+  maintenance_work_mem: "64MB"
+  checkpoint_completion_target: 0.9
+  wal_buffers: "16MB"
+  default_statistics_target: 100
+  random_page_cost: 1.1
+  effective_io_concurrency: 200
+  work_mem: "4MB"
+  min_wal_size: "1GB"
+  max_wal_size: "4GB"
+
+# Backups
+backup_enabled: yes
+backup_schedule: "0 2 * * *"  # 02:00 chaque jour
+backup_retention_days: 30
+backup_path: "/var/backups/postgresql"
+
+# Firewall - Autoriser les connexions des webservers
+allowed_networks:
+  - "192.168.1.0/24"
+
+# Monitoring
+enable_monitoring: yes
+monitoring_user: monitoring
+monitoring_password: "{{ vault_monitoring_password }}"
+
+# Replication (optionnel)
+enable_replication: no

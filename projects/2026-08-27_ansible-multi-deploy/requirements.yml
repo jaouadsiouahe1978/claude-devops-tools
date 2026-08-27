@@ -1,0 +1,18 @@
+# Requirements Ansible Galaxy
+# Rôles et collections externes (optionnel)
+
+---
+collections:
+  - name: community.general
+    version: ">=1.0.0"
+  - name: ansible.posix
+    version: ">=1.1.0"
+
+roles:
+  # Optionnel: utiliser des rôles pré-construits de Galaxy
+  # - src: geerlingguy.nginx
+  #   version: 3.0.0
+  # - src: geerlingguy.nodejs
+  #   version: 5.0.0
+  # - src: geerlingguy.postgresql
+  #   version: 5.0.0

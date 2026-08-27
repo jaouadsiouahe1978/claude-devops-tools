@@ -1,0 +1,110 @@
+# Nginx Configuration - Proxy Reverse pour Application Node.js
+# Généré par Ansible
+
+upstream nodejs_backend {
+    # Équilibrage de charge simple
+    server localhost:{{ app_port | default(3000) }};
+    keepalive 64;
+}
+
+# Redirection HTTP vers HTTPS (optionnel)
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+
+    # Permettre Let's Encrypt pour les certificats HTTPS
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Redirection vers HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Configuration HTTPS (à configurer avec des certificats réels)
+server {
+    listen {{ nginx_ssl_port }} ssl http2 default_server;
+    listen [::]:{{ nginx_ssl_port }} ssl http2 default_server;
+
+    server_name _;
+
+    # Certificats SSL (À remplacer par des certificats réels)
+    # ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    # Configuration SSL moderne
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Paramètres de performance
+    client_max_body_size 20M;
+    client_body_timeout 30s;
+    client_header_timeout 30s;
+    keepalive_timeout 65s;
+    send_timeout 30s;
+
+    # Configuration du proxy
+    location / {
+        proxy_pass http://nodejs_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # Timeouts pour WebSocket
+        proxy_connect_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_read_timeout 7d;
+    }
+
+    # Endpoint de health check
+    location /health {
+        proxy_pass http://nodejs_backend;
+        access_log off;
+    }
+
+    # Fichiers statiques (optimisation)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://nodejs_backend;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Refuser les accès directs aux fichiers sensibles
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Logs
+    access_log /var/log/nginx/access.log combined buffer=32k flush=5s;
+    error_log /var/log/nginx/error.log warn;
+}
+
+# Configuration globale
+http {
+    # Compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json;
+
+    # Sécurité
+    server_tokens off;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+}

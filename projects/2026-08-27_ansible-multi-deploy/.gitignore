@@ -1,0 +1,42 @@
+# Ansible project .gitignore
+
+# Logs
+logs/
+*.log
+
+# Cache
+*.cache
+.ansible/
+
+# Secrets et Vault
+vault.yml
+*.vault
+secrets/
+.vault-password
+
+# Local files
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# OS
+.vagrant/
+*.box
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Roles externes
+roles/geerlingguy.*
+roles/geerlingguy/
+
+# Temporaires
+*.tmp
+temp/

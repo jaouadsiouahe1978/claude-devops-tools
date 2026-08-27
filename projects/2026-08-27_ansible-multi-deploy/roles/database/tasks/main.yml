@@ -1,0 +1,191 @@
+---
+# Tâches pour configurer les serveurs de base de données (PostgreSQL)
+
+- name: "Add PostgreSQL repository"
+  apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: present
+  tags: postgres
+
+- name: "Add PostgreSQL GPG key"
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  tags: postgres
+
+- name: "Install PostgreSQL packages"
+  apt:
+    name:
+      - "postgresql-{{ postgres_version }}"
+      - "postgresql-contrib-{{ postgres_version }}"
+      - python3-psycopg2
+      - libpq-dev
+    state: present
+  tags: postgres
+
+- name: "Start and enable PostgreSQL service"
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+  tags: postgres
+
+- name: "Create application database"
+  postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+  become_user: postgres
+  tags: postgres
+
+- name: "Create application database user"
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    role_attr_flags: "CREATEDB,NOSUPERUSER"
+    state: present
+  become_user: postgres
+  tags: postgres
+
+- name: "Grant privileges on database to user"
+  postgresql_privs:
+    type: database
+    database: "{{ db_name }}"
+    roles: "{{ db_user }}"
+    privs: ALL
+    state: present
+  become_user: postgres
+  tags: postgres
+
+- name: "Configure PostgreSQL to listen on all interfaces"
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+    state: present
+  notify: "Restart PostgreSQL"
+  tags: postgres
+
+- name: "Configure PostgreSQL performance parameters"
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: "^#?{{ item.key }}"
+    line: "{{ item.key }} = {{ item.value }}"
+    state: present
+  loop: "{{ postgres_config | dict2items }}"
+  notify: "Restart PostgreSQL"
+  tags: postgres
+
+- name: "Configure PostgreSQL client authentication"
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    regexp: "^host\\s+all\\s+all\\s+127.0.0.1"
+    line: "host    all             all             127.0.0.1/32            md5"
+    state: present
+  notify: "Restart PostgreSQL"
+  tags: postgres
+
+- name: "Add client authentication for local network"
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    line: "host    all             all             {{ item }}/32            md5"
+    state: present
+    insertafter: "^host\\s+all\\s+all\\s+127.0.0.1"
+  loop: "{{ allowed_networks | default([]) }}"
+  notify: "Restart PostgreSQL"
+  tags: postgres
+
+- name: "Create backup directory"
+  file:
+    path: "{{ backup_path | default('/var/backups/postgresql') }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+  when: backup_enabled | default(false)
+  tags:
+    - postgres
+    - backup
+
+- name: "Create backup script"
+  copy:
+    content: |
+      #!/bin/bash
+      # Backup script pour PostgreSQL
+      BACKUP_PATH="{{ backup_path | default('/var/backups/postgresql') }}"
+      RETENTION_DAYS={{ backup_retention_days | default(30) }}
+      DB_NAME="{{ db_name }}"
+      DATE=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="$BACKUP_PATH/${DB_NAME}_${DATE}.sql.gz"
+
+      # Backup
+      pg_dump -U {{ db_user }} $DB_NAME | gzip > $BACKUP_FILE
+
+      # Retention
+      find $BACKUP_PATH -name "${DB_NAME}_*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+      echo "Backup effectué: $BACKUP_FILE"
+    dest: /usr/local/bin/postgres-backup.sh
+    owner: postgres
+    group: postgres
+    mode: '0755'
+  when: backup_enabled | default(false)
+  tags:
+    - postgres
+    - backup
+
+- name: "Schedule backup with cron"
+  cron:
+    name: "PostgreSQL backup"
+    user: postgres
+    minute: "0"
+    hour: "2"
+    job: "/usr/local/bin/postgres-backup.sh"
+    state: present
+  when: backup_enabled | default(false)
+  tags:
+    - postgres
+    - backup
+
+- name: "Create monitoring user for Prometheus (optional)"
+  postgresql_user:
+    name: "{{ monitoring_user | default('monitoring') }}"
+    password: "{{ monitoring_password | default('password') }}"
+    role_attr_flags: "NOSUPERUSER,NOCREATEDB"
+    state: present
+  become_user: postgres
+  when: enable_monitoring | default(false)
+  tags:
+    - postgres
+    - monitoring
+
+- name: "Grant monitoring privileges"
+  postgresql_privs:
+    type: database
+    database: "{{ db_name }}"
+    roles: "{{ monitoring_user | default('monitoring') }}"
+    privs: CONNECT
+    state: present
+  become_user: postgres
+  when: enable_monitoring | default(false)
+  tags:
+    - postgres
+    - monitoring
+
+- name: "Verify database connectivity"
+  postgresql_query:
+    db: "{{ db_name }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    query: "SELECT version();"
+  register: pg_version
+  tags: postgres
+
+- name: "Database setup complete"
+  debug:
+    msg: |
+      ✓ PostgreSQL {{ postgres_version }} installé sur {{ inventory_hostname }}
+      ✓ Database: {{ db_name }}
+      ✓ User: {{ db_user }}
+      ✓ Backups activés: {{ backup_enabled | default(false) }}
+      ✓ Version: {{ pg_version.query_result[0].version | first }}
+  tags: debug

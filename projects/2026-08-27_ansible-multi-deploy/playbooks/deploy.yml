@@ -1,0 +1,42 @@
+---
+# Playbook de Déploiement Simple
+# Redéploie uniquement les serveurs web avec la dernière version de l'app
+
+- name: "Simple deployment - Update Web Servers"
+  hosts: webservers
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/webservers.yml
+  tasks:
+    - name: "Pull latest application code"
+      git:
+        repo: "{{ app_repo | default('https://github.com/exemple/app.git') }}"
+        dest: "{{ app_root }}/{{ app_name | default('app') }}"
+        version: "{{ app_branch | default('main') }}"
+        force: yes
+      become_user: "{{ app_user | default('appuser') }}"
+      tags: deploy
+
+    - name: "Install/update dependencies"
+      npm:
+        path: "{{ app_root }}/{{ app_name | default('app') }}"
+        production: yes
+      become_user: "{{ app_user | default('appuser') }}"
+      tags: deploy
+
+    - name: "Restart application service"
+      systemd:
+        name: "{{ app_name | default('app') }}.service"
+        state: restarted
+
+    - name: "Wait for application to be ready"
+      uri:
+        url: "http://localhost:{{ app_port | default(3000) }}/health"
+        status_code: 200
+      retries: 5
+      delay: 2
+      tags: deploy
+
+    - name: "Deployment complete"
+      debug:
+        msg: "✓ Déploiement réussi sur {{ inventory_hostname }}"

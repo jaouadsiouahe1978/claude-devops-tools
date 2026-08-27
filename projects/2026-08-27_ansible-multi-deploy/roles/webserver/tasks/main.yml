@@ -1,0 +1,140 @@
+---
+# Tâches pour configurer les serveurs web (Nginx + Node.js)
+
+- name: "Install Nginx"
+  apt:
+    name: nginx
+    state: present
+  tags: nginx
+
+- name: "Install Node.js and npm"
+  apt:
+    name:
+      - nodejs
+      - npm
+    state: present
+  tags: nodejs
+
+- name: "Upgrade npm"
+  npm:
+    name: npm
+    global: yes
+    state: latest
+  tags: nodejs
+
+- name: "Create nginx config from template"
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+    backup: yes
+  notify: "Restart Nginx"
+  tags: nginx
+
+- name: "Test Nginx configuration"
+  shell: nginx -t
+  changed_when: false
+  tags: nginx
+
+- name: "Enable Nginx site"
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+  notify: "Restart Nginx"
+  tags: nginx
+
+- name: "Start and enable Nginx service"
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+  tags: nginx
+
+- name: "Clone application repository"
+  git:
+    repo: "{{ app_repo | default('https://github.com/exemple/app.git') }}"
+    dest: "{{ app_root }}/{{ app_name | default('app') }}"
+    version: "{{ app_branch | default('main') }}"
+    force: yes
+  become_user: "{{ app_user | default('appuser') }}"
+  tags:
+    - git
+    - deploy
+
+- name: "Install Node.js dependencies"
+  npm:
+    path: "{{ app_root }}/{{ app_name | default('app') }}"
+    production: yes
+  become_user: "{{ app_user | default('appuser') }}"
+  tags:
+    - nodejs
+    - deploy
+
+- name: "Create systemd service for Node app"
+  template:
+    src: app.service.j2
+    dest: "/etc/systemd/system/{{ app_name | default('app') }}.service"
+    mode: '0644'
+  notify:
+    - "Reload systemd"
+    - "Restart Node App"
+  tags:
+    - systemd
+    - deploy
+
+- name: "Start and enable application service"
+  systemd:
+    name: "{{ app_name | default('app') }}.service"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags:
+    - systemd
+    - deploy
+
+- name: "Setup Node app environment file"
+  template:
+    src: app.env.j2
+    dest: "{{ app_root }}/{{ app_name | default('app') }}/.env"
+    owner: "{{ app_user | default('appuser') }}"
+    group: "{{ app_group | default('appgroup') }}"
+    mode: '0600'
+  notify: "Restart Node App"
+  tags:
+    - env
+    - deploy
+
+- name: "Create log rotation for application"
+  template:
+    src: app-logrotate.j2
+    dest: "/etc/logrotate.d/{{ app_name | default('app') }}"
+  tags: logs
+
+- name: "Ensure application logs directory is writable"
+  file:
+    path: "{{ app_root }}/{{ app_name | default('app') }}/logs"
+    state: directory
+    owner: "{{ app_user | default('appuser') }}"
+    group: "{{ app_group | default('appgroup') }}"
+    mode: '0755'
+  tags: logs
+
+- name: "Health check - wait for app to start"
+  uri:
+    url: "http://localhost:{{ app_port | default(3000) }}{{ health_check_endpoint | default('/') }}"
+    status_code: 200
+    delay: 2
+    retries: 5
+    retry_delay: 2
+  tags:
+    - healthcheck
+    - deploy
+
+- name: "Application deployment complete"
+  debug:
+    msg: |
+      ✓ Serveur web configuré sur {{ inventory_hostname }}
+      ✓ Nginx écoute sur port {{ nginx_port }}
+      ✓ Application Node.js sur port {{ app_port | default(3000) }}
+      ✓ Proxy reverse configuré
+  tags: debug

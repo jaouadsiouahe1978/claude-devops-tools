@@ -1,0 +1,37 @@
+# Variables globales pour tous les serveurs
+
+# Packages communs
+common_packages:
+  - build-essential
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - openssh-server
+  - python3-pip
+
+# Paramètres de base
+system_timezone: UTC
+enable_ntp: yes
+
+# Variables de base (à adapter/surcharger)
+app_user: appuser
+app_group: appgroup
+app_root: /opt/app
+
+# Base de données
+db_host: db1
+db_port: 5432
+db_user: appuser
+db_password: "{{ vault_db_password | default('change-me-in-vault') }}"
+db_name: app_db
+
+# Monitoirng
+enable_monitoring: no
+monitoring_user: monitoring
+monitoring_password: "{{ vault_monitoring_password | default('change-me-in-vault') }}"
+
+# Logs
+logs_directory: "/var/log/app"

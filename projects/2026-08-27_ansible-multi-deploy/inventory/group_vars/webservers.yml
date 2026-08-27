@@ -1,0 +1,60 @@
+# Variables pour le groupe webservers
+
+# Packages à installer
+webserver_packages:
+  - nginx
+  - nodejs
+  - npm
+  - git
+  - curl
+  - wget
+
+# Configuration Nginx
+nginx_port: 80
+nginx_ssl_port: 443
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+
+# Application Web
+app_version: "1.0.0"
+app_repo: "https://github.com/exemple/app.git"
+app_branch: "main"
+app_port: 3000
+app_name: "myapp"
+
+# Variables d'environnement pour l'app
+app_env:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  DATABASE_URL: "postgresql://appuser:{{ db_password }}@{{ db_host }}:5432/app_db"
+
+# Utilisateurs à créer
+system_users:
+  - username: appuser
+    shell: /bin/bash
+    home: /home/appuser
+    groups: sudo
+
+# Firewall
+firewall_rules:
+  - rule: allow
+    port: 80
+    proto: tcp
+  - rule: allow
+    port: 443
+    proto: tcp
+  - rule: allow
+    port: 22
+    proto: tcp
+
+# Permissions SSH
+ssh_config:
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  PubkeyAuthentication: "yes"
+
+# Health Check
+health_check_interval: 30
+health_check_timeout: 5
+health_check_endpoint: "/health"

@@ -1,0 +1,12 @@
+{{ app_root }}/{{ app_name | default('app') }}/logs/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 {{ app_user | default('appuser') }} {{ app_group | default('appgroup') }}
+    sharedscripts
+    postrotate
+        systemctl reload {{ app_name | default('app') }}.service > /dev/null 2>&1 || true
+    endscript
+}

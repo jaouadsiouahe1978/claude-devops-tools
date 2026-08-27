@@ -1,0 +1,32 @@
+[Unit]
+Description={{ app_name | default('Node.js Application') }} Service
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user | default('appuser') }}
+WorkingDirectory={{ app_root }}/{{ app_name | default('app') }}
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+RestartSec=5
+
+# Environment variables
+{% for key, value in app_env.items() %}
+Environment="{{ key }}={{ value }}"
+{% endfor %}
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ app_root }}/{{ app_name | default('app') }}/logs
+ReadWritePaths={{ app_root }}/{{ app_name | default('app') }}/data
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ app_name | default('app') }}
+
+[Install]
+WantedBy=multi-user.target

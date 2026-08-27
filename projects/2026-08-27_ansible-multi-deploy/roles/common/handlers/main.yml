@@ -1,0 +1,16 @@
+---
+# Handlers pour le rôle common
+
+- name: "Restart SSH"
+  systemd:
+    name: ssh
+    state: restarted
+
+- name: "Restart UFW"
+  systemd:
+    name: ufw
+    state: restarted
+
+- name: "Reload systemd"
+  systemd:
+    daemon_reload: yes

@@ -1,0 +1,140 @@
+---
+# Tâches communes pour tous les serveurs
+
+- name: "Update apt cache"
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: packages
+
+- name: "Install common packages"
+  apt:
+    name: "{{ common_packages | default([]) }}"
+    state: present
+  tags: packages
+
+- name: "Install base packages for all servers"
+  apt:
+    name:
+      - git
+      - curl
+      - wget
+      - vim
+      - htop
+      - net-tools
+      - ufw
+      - openssh-server
+      - python3-pip
+    state: present
+  tags: packages
+
+- name: "Create system users"
+  user:
+    name: "{{ item.username }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    home: "{{ item.home | default('/home/' + item.username) }}"
+    groups: "{{ item.groups | default([]) | join(',') }}"
+    createhome: yes
+    state: present
+  loop: "{{ system_users | default([]) }}"
+  tags: users
+
+- name: "Setup SSH key for users"
+  authorized_key:
+    user: "{{ item.username }}"
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    state: present
+  loop: "{{ system_users | default([]) }}"
+  ignore_errors: yes
+  tags: ssh
+
+- name: "Configure SSH daemon"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?{{ item.key }}"
+    line: "{{ item.key }} {{ item.value }}"
+    state: present
+  loop: "{{ ssh_config | dict2items }}"
+  notify: "Restart SSH"
+  tags: ssh
+
+- name: "Enable and start SSH service"
+  systemd:
+    name: ssh
+    enabled: yes
+    state: started
+  tags: ssh
+
+- name: "Enable UFW firewall"
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  tags: firewall
+
+- name: "Configure UFW rules"
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    state: enabled
+  loop: "{{ firewall_rules | default([]) }}"
+  tags: firewall
+
+- name: "Set timezone to UTC"
+  timezone:
+    name: UTC
+  tags: system
+
+- name: "Install NTP for time synchronization"
+  apt:
+    name: chrony
+    state: present
+  tags: system
+
+- name: "Ensure chrony service is running"
+  systemd:
+    name: chrony
+    enabled: yes
+    state: started
+  tags: system
+
+- name: "Create application user if needed"
+  user:
+    name: "{{ app_user | default('appuser') }}"
+    shell: /bin/bash
+    home: "{{ app_root | default('/opt/app') }}"
+    createhome: yes
+    state: present
+  tags: app
+
+- name: "Create application directories"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user | default('appuser') }}"
+    group: "{{ app_group | default('appgroup') }}"
+    mode: '0755'
+  loop:
+    - "{{ app_root | default('/opt/app') }}"
+    - "{{ app_root | default('/opt/app') }}/logs"
+    - "{{ app_root | default('/opt/app') }}/data"
+  tags: app
+
+- name: "Update system packages"
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+  tags:
+    - packages
+    - system
+
+- name: "Display system information"
+  debug:
+    msg: |
+      Setup complet pour {{ inventory_hostname }}
+      OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+      Python: {{ ansible_python_version }}
+      User courant: {{ ansible_user }}
+  tags: debug
