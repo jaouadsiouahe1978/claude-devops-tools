@@ -1,0 +1,28 @@
+[http.middlewares]
+
+  [http.middlewares.security-headers.headers]
+    accessControlAllowOriginList = ["*"]
+    accessControlMaxAge = 100
+    addVaryHeader = true
+    referrerPolicy = "same-origin"
+    permissionsPolicy = "camera=(), microphone=()"
+
+    [http.middlewares.security-headers.headers.customResponseHeaders]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+  [http.middlewares.rate-limit.rateLimit]
+    average = 100
+    period = "1m"
+    burst = 20
+
+  [http.middlewares.gzip.compress]
+    level = 5
+    minResponseBodyBytes = 1000
+
+[entryPoints.web.http.redirections.entrypoint]
+to = "websecure"
+scheme = "https"
+permanent = true

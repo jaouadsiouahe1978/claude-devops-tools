@@ -1,0 +1,24 @@
+# Certificats et clés (sauf ceux pour la démo)
+traefik-certs/*.json
+traefik-certs/*.key
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Docker
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
