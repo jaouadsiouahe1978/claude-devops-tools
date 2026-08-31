@@ -1,0 +1,197 @@
+name: 📊 Health Monitoring
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:
+
+env:
+  HEALTH_CHECK_TIMEOUT: 10
+  ERROR_RATE_THRESHOLD: 1
+  LATENCY_THRESHOLD: 500
+
+jobs:
+  monitor-all-environments:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔍 Monitor Dev Environment
+        id: monitor-dev
+        continue-on-error: true
+        run: |
+          echo "🌱 Monitoring Dev Environment..."
+
+          HEALTH_URL="https://app-dev.example.com/health"
+          METRICS_URL="https://app-dev.example.com/metrics"
+
+          # Mock health check
+          DEV_STATUS="UP"
+          DEV_ERROR_RATE="0.1%"
+          DEV_LATENCY="95ms"
+
+          if [ "$DEV_STATUS" = "UP" ]; then
+            echo "✅ Dev: Healthy"
+            echo "  - Error rate: $DEV_ERROR_RATE"
+            echo "  - Latency: $DEV_LATENCY"
+            echo "dev_status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Dev: Unhealthy"
+            echo "dev_status=unhealthy" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 🔍 Monitor Staging Environment
+        id: monitor-staging
+        continue-on-error: true
+        run: |
+          echo "🎬 Monitoring Staging Environment..."
+
+          HEALTH_URL="https://app-staging.example.com/health"
+          METRICS_URL="https://app-staging.example.com/metrics"
+
+          # Mock health check
+          STAGING_STATUS="UP"
+          STAGING_ERROR_RATE="0.05%"
+          STAGING_LATENCY="110ms"
+          STAGING_CPU="38%"
+          STAGING_MEMORY="45%"
+
+          if [ "$STAGING_STATUS" = "UP" ]; then
+            echo "✅ Staging: Healthy"
+            echo "  - Error rate: $STAGING_ERROR_RATE"
+            echo "  - Latency: $STAGING_LATENCY"
+            echo "  - CPU: $STAGING_CPU"
+            echo "  - Memory: $STAGING_MEMORY"
+            echo "staging_status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Staging: Unhealthy"
+            echo "staging_status=unhealthy" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 🔍 Monitor Production Environment
+        id: monitor-prod
+        continue-on-error: true
+        run: |
+          echo "🏭 Monitoring Production Environment..."
+
+          HEALTH_URL="https://app.example.com/health"
+          METRICS_URL="https://app.example.com/metrics"
+
+          # Mock health check with critical alerts
+          PROD_STATUS="UP"
+          PROD_ERROR_RATE="0.08%"
+          PROD_LATENCY="105ms"
+          PROD_CPU="42%"
+          PROD_MEMORY="48%"
+          PROD_THROUGHPUT="2150 req/s"
+
+          if [ "$PROD_STATUS" = "UP" ]; then
+            echo "✅ Production: Healthy"
+            echo "  - Error rate: $PROD_ERROR_RATE"
+            echo "  - Latency: $PROD_LATENCY"
+            echo "  - CPU: $PROD_CPU"
+            echo "  - Memory: $PROD_MEMORY"
+            echo "  - Throughput: $PROD_THROUGHPUT"
+
+            # Check thresholds
+            ERROR_RATE_NUM="${PROD_ERROR_RATE%\%}"
+            if (( $(echo "$ERROR_RATE_NUM > ${{ env.ERROR_RATE_THRESHOLD }}" | bc -l) )); then
+              echo "⚠️  WARNING: Error rate above threshold"
+              echo "prod_status=warning" >> $GITHUB_OUTPUT
+            else
+              echo "prod_status=healthy" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Production: UNHEALTHY - CRITICAL ALERT"
+            echo "prod_status=unhealthy" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 📊 Database Health Check
+        id: db-check
+        continue-on-error: true
+        run: |
+          echo "🗄️  Database Health Check..."
+
+          # Mock database check
+          DB_STATUS="UP"
+          DB_CONNECTIONS="142/200"
+          DB_QUERY_TIME="8ms"
+          DB_REPLICATION_LAG="0.2s"
+
+          if [ "$DB_STATUS" = "UP" ]; then
+            echo "✅ Database: Healthy"
+            echo "  - Active connections: $DB_CONNECTIONS"
+            echo "  - Avg query time: $DB_QUERY_TIME"
+            echo "  - Replication lag: $DB_REPLICATION_LAG"
+            echo "db_status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Database: Down"
+            echo "db_status=down" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 🔌 External Dependencies
+        id: dependencies-check
+        continue-on-error: true
+        run: |
+          echo "🔌 Checking external dependencies..."
+
+          echo "Cache (Redis): ✅ Connected"
+          echo "Message Queue (RabbitMQ): ✅ Connected"
+          echo "CDN: ✅ Connected (p95: 45ms)"
+          echo "Payment gateway: ✅ Connected"
+          echo "Email service: ✅ Connected"
+          echo ""
+          echo "✅ All external dependencies operational"
+
+      - name: 📈 Collect Metrics
+        run: |
+          echo "📊 Environment Status Summary"
+          echo "=============================="
+          echo ""
+          echo "Dev:        ${{ steps.monitor-dev.outputs.dev_status }}"
+          echo "Staging:    ${{ steps.monitor-staging.outputs.staging_status }}"
+          echo "Production: ${{ steps.monitor-prod.outputs.prod_status }}"
+          echo "Database:   ${{ steps.db-check.outputs.db_status }}"
+          echo ""
+          echo "⏱️  Last check: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+
+      - name: 🚨 Alert on Critical Issues
+        if: |
+          steps.monitor-prod.outputs.prod_status == 'unhealthy' ||
+          steps.db-check.outputs.db_status == 'down'
+        run: |
+          echo "🚨 CRITICAL ALERT: Production issue detected!"
+          echo ""
+          echo "Actions to take:"
+          echo "1. Check detailed logs in GitHub Actions"
+          echo "2. Investigate recent deployments"
+          echo "3. Check error rates in monitoring"
+          echo "4. Consider rollback if recent deployment"
+          echo "5. Page on-call engineer"
+          exit 1
+
+      - name: ✅ Health check summary
+        if: always()
+        run: |
+          echo "✅ Health monitoring completed"
+          echo ""
+          echo "Dashboard: https://github.com/${{ github.repository }}/actions"
+          echo "Alerts: Check GitHub Actions notifications"
+          echo "Next check: In 5 minutes"
+
+      - name: 📤 Upload health report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-report-${{ github.run_id }}
+          path: health-report.json
+          retention-days: 30
+        continue-on-error: true

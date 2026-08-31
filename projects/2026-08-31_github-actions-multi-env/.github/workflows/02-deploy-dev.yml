@@ -1,0 +1,152 @@
+name: 🌱 Deploy to Dev
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version to deploy'
+        required: false
+        default: 'latest'
+
+env:
+  DEPLOYMENT_TIMEOUT: 300
+  HEALTH_CHECK_RETRIES: 10
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: ${{ steps.deploy.outputs.deployment_url }}
+    permissions:
+      deployments: write
+      contents: read
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🚀 Create deployment
+        id: deployment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'dev',
+              description: 'Development deployment',
+              auto_merge: false,
+              required_contexts: []
+            });
+            console.log(`Deployment ID: ${deployment.data.id}`);
+            return deployment.data.id;
+
+      - name: 🔑 Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOYMENT_KEY_DEV }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -t rsa dev-server.example.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: 🐳 Load environment config
+        run: |
+          source deploy/dev-config.env
+          echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> $GITHUB_ENV
+          echo "API_ENDPOINT=$API_ENDPOINT" >> $GITHUB_ENV
+          echo "LOG_LEVEL=$LOG_LEVEL" >> $GITHUB_ENV
+
+      - name: 📦 Download and deploy
+        id: deploy
+        run: |
+          # Simulated deployment (dans un cas réel, ssh vers serveur)
+          echo "Deploying to dev environment..."
+
+          # Mock deployment
+          export DEPLOYMENT_URL="https://app-dev.example.com"
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+          # Dans un cas réel:
+          # ssh -i ~/.ssh/deploy_key deploy@dev-server.example.com << 'EOF'
+          #   cd /apps/deployment
+          #   docker pull ghcr.io/${{ github.repository }}/app:develop
+          #   docker-compose -f docker-compose.dev.yml up -d
+          # EOF
+
+          echo "✅ Deployment started on dev"
+
+      - name: ⏳ Wait for deployment to stabilize
+        run: sleep 10
+
+      - name: 🔍 Health check
+        id: health_check
+        run: |
+          DEPLOYMENT_URL="${{ env.DEPLOYMENT_URL }}"
+          RETRIES=${{ env.HEALTH_CHECK_RETRIES }}
+          ATTEMPT=0
+
+          echo "🔍 Checking health: $DEPLOYMENT_URL/health"
+
+          while [ $ATTEMPT -lt $RETRIES ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$RETRIES..."
+
+            # Mock health check
+            HEALTH_STATUS="UP"
+
+            if [ "$HEALTH_STATUS" = "UP" ]; then
+              echo "✅ Application is healthy"
+              echo "health_status=UP" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            if [ $ATTEMPT -lt $RETRIES ]; then
+              sleep 5
+            fi
+          done
+
+          echo "❌ Health check failed after $RETRIES attempts"
+          exit 1
+
+      - name: 📊 Record deployment success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'success',
+              description: 'Development deployment successful',
+              environment_url: '${{ env.DEPLOYMENT_URL }}'
+            });
+
+      - name: 📊 Record deployment failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'failure',
+              description: 'Development deployment failed'
+            });
+
+      - name: 🔔 Notify success
+        if: success()
+        run: |
+          echo "✅ Dev deployment successful!"
+          echo "URL: ${{ env.DEPLOYMENT_URL }}"
+          echo "Version: develop-${{ github.sha }}"
+
+      - name: 🔴 Notify failure
+        if: failure()
+        run: |
+          echo "❌ Dev deployment failed!"
+          echo "Check logs for details"
