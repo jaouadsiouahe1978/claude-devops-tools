@@ -1,0 +1,6 @@
+prometheus_storage/
+alertmanager_storage/
+grafana_storage/
+.env
+.env.local
+*.log
