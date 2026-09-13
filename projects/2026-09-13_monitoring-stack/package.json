@@ -1,0 +1,17 @@
+{
+  "name": "monitoring-app",
+  "version": "1.0.0",
+  "description": "Simple Node.js app exposing Prometheus metrics",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": ["monitoring", "prometheus", "metrics"],
+  "author": "Jaouad DevOps Training",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^14.2.0"
+  }
+}

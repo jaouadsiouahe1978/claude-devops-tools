@@ -1,0 +1,53 @@
+# Prometheus Configuration
+# Configuration for scraping metrics from monitored targets
+
+global:
+  # Default scrape interval: how often to scrape targets
+  scrape_interval: 15s
+  # Default evaluation interval: how often to evaluate rules
+  evaluation_interval: 15s
+  # How long until a scrape request times out
+  scrape_timeout: 10s
+  # Attach labels to all timeseries
+  external_labels:
+    monitor: 'devops-monitoring'
+    environment: 'development'
+
+# Alertmanager config (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Scrape configurations - defines what targets to monitor
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Our application
+  - job_name: 'app'
+    # Override the global default's scrape interval to every 5s (more responsive)
+    scrape_interval: 5s
+    scrape_timeout: 5s
+    # Static configuration (can also use service discovery)
+    static_configs:
+      # Target: app service on Docker network
+      - targets: ['app:8080']
+        labels:
+          service: 'monitoring-app'
+          version: '1.0'
+
+# Record rules (optional) - for pre-computing complex queries
+# rule_files:
+#   - '/etc/prometheus/rules/*.yml'
+
+# Recording rules example:
+# groups:
+#   - name: app_metrics
+#     interval: 30s
+#     rules:
+#       - record: app:requests:5m_rate
+#         expr: rate(app_requests_total[5m])
