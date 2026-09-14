@@ -1,0 +1,69 @@
+# Prometheus Configuration for Firewall Monitoring
+# This is an optional configuration for monitoring firewall metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'security-lab'
+    environment: 'lab'
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alert_rules.yml"
+  # - "recording_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporter for system metrics (if installed)
+  # Install with: apt-get install prometheus-node-exporter
+  - job_name: 'node'
+    static_configs:
+      - targets: ['security-lab:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  # UFW metrics (custom exporter needed)
+  # This would require a custom exporter script
+  - job_name: 'firewall-ufw'
+    static_configs:
+      - targets: ['security-lab:9101']
+    scrape_interval: 30s
+    scrape_timeout: 5s
+
+  # fail2ban metrics (custom exporter needed)
+  - job_name: 'fail2ban'
+    static_configs:
+      - targets: ['security-lab:9102']
+    scrape_interval: 30s
+    scrape_timeout: 5s
+
+################################################################################
+# Custom metric exporters would need to be created separately
+#
+# Example: UFW exporter script
+# - Parse UFW logs for blocked connections
+# - Count banned IPs per jail
+# - Track firewall state changes
+#
+# Example: fail2ban exporter script
+# - Get banned IP count per jail
+# - Track ban/unban events
+# - Monitor jail states
+#
+# These can be developed as sidecar containers or on the host system
+################################################################################

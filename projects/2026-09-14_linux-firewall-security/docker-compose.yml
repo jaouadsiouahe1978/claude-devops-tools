@@ -1,0 +1,172 @@
+version: '3.9'
+
+################################################################################
+# Docker Compose - Linux Security Lab Environment
+# Purpose: Test firewall and fail2ban configuration in containerized environment
+# Usage: docker-compose up -d
+################################################################################
+
+services:
+  # Secure SSH Server with UFW and fail2ban
+  security-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: firewall-security-lab
+    hostname: secure-server
+
+    # Keep container running
+    stdin_open: true
+    tty: true
+
+    # Mount volumes for configuration
+    volumes:
+      # Mount firewall configs
+      - ./ufw-setup.sh:/usr/local/bin/ufw-setup.sh:ro
+      - ./fail2ban-setup.sh:/usr/local/bin/fail2ban-setup.sh:ro
+      - ./test-security.sh:/usr/local/bin/test-security.sh:ro
+      - ./monitor-firewall.sh:/usr/local/bin/monitor-firewall.sh:ro
+
+      # Persistent firewall state
+      - firewall-logs:/var/log/
+      - fail2ban-state:/var/lib/fail2ban/
+
+    # Network configuration
+    networks:
+      - security-network
+    ports:
+      # SSH
+      - "2222:22"
+      # HTTP
+      - "8080:80"
+      # HTTPS
+      - "8443:443"
+
+    # Environment variables
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+
+    # Capabilities needed for firewall
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_NICE
+
+    # Resource limits
+    mem_limit: 512m
+    cpus: 1
+
+  # Test client to simulate attacks (education purposes only)
+  test-client:
+    image: ubuntu:22.04
+    container_name: security-test-client
+    hostname: test-client
+
+    stdin_open: true
+    tty: true
+
+    networks:
+      - security-network
+
+    # Keep container running
+    command: sleep infinity
+
+    # Install tools for testing
+    entrypoint: |
+      bash -c '
+      apt-get update &&
+      apt-get install -y curl ssh openssh-client netcat-openbsd dnsutils traceroute &&
+      bash
+      '
+
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+
+    mem_limit: 256m
+    cpus: 0.5
+
+  # Monitoring/Dashboard (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: firewall-prometheus
+    hostname: prometheus
+
+    networks:
+      - security-network
+
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+    mem_limit: 256m
+    cpus: 0.5
+
+    profiles:
+      - monitoring
+
+################################################################################
+# Volumes
+################################################################################
+volumes:
+  firewall-logs:
+    driver: local
+
+  fail2ban-state:
+    driver: local
+
+  prometheus-data:
+    driver: local
+
+################################################################################
+# Networks
+################################################################################
+networks:
+  security-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+################################################################################
+# Usage Instructions:
+#
+# 1. Start the security lab:
+#    docker-compose up -d
+#
+# 2. Enter the secure server container:
+#    docker exec -it firewall-security-lab bash
+#
+# 3. Setup UFW firewall:
+#    sudo bash /usr/local/bin/ufw-setup.sh
+#
+# 4. Setup fail2ban:
+#    sudo bash /usr/local/bin/fail2ban-setup.sh
+#
+# 5. Run security tests:
+#    sudo bash /usr/local/bin/test-security.sh
+#
+# 6. Monitor in real-time:
+#    sudo bash /usr/local/bin/monitor-firewall.sh watch
+#
+# 7. From test client, simulate connections:
+#    docker exec -it security-test-client bash
+#    curl http://security-lab:80
+#    ssh root@security-lab
+#
+# 8. View logs:
+#    docker logs firewall-security-lab
+#    docker volume inspect firewall-logs
+#
+# 9. Stop the lab:
+#    docker-compose down
+#
+# 10. Clean up (including data):
+#     docker-compose down -v
+################################################################################
