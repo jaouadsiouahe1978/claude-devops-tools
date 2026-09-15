@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github-actions-app
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      BUILD_TIME: ${BUILD_TIME:-local}
+      COMMIT_SHA: ${COMMIT_SHA:-dev}
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - app-network
+    labels:
+      - "com.example.description=GitHub Actions CI/CD Pipeline App"
+
+networks:
+  app-network:
+    driver: bridge

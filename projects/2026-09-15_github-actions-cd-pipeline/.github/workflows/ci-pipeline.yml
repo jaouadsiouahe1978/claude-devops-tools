@@ -1,0 +1,213 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/app
+
+jobs:
+  # Job 1: Code Quality - Linting
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # Job 2: Unit Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest tests
+        run: npm run test
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+
+  # Job 3: Build Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      image-tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tag
+        id: image
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHORT_SHA}"
+          LATEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "image=${TAG}" >> $GITHUB_OUTPUT
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "latest=${LATEST}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}
+            ${{ steps.image.outputs.latest }}
+          cache-from: type=registry,ref=${{ steps.image.outputs.latest }}
+          cache-to: type=inline
+          build-args: |
+            BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            COMMIT_SHA=${{ github.sha }}
+
+  # Job 4: Deploy to Dev
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: build
+    environment: dev
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Dev
+        run: |
+          echo "🚀 Deploying to DEV environment"
+          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "Commit: ${{ github.sha }}"
+          # Placeholder for actual deployment
+          echo "✅ Dev deployment completed"
+
+  # Job 5: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, deploy-dev]
+    environment: staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging
+        run: |
+          echo "🚀 Deploying to STAGING environment"
+          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "Commit: ${{ github.sha }}"
+          # Placeholder for actual deployment
+          echo "✅ Staging deployment completed"
+
+  # Job 6: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    environment:
+      name: prod
+      url: https://app.example.com
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Manual approval check
+        run: |
+          echo "⏳ Waiting for approval to deploy to PRODUCTION"
+          echo "This job requires manual approval in GitHub UI"
+
+      - name: Deploy to Production
+        run: |
+          echo "🚀 Deploying to PRODUCTION environment"
+          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "Commit: ${{ github.sha }}"
+          # Placeholder for actual deployment
+          echo "✅ Production deployment completed"
+
+      - name: Post-deployment verification
+        run: |
+          echo "🔍 Verifying production deployment"
+          echo "Running health checks..."
+          # Placeholder for health checks
+          echo "✅ Production verification completed"
+
+  # Job 7: Notify on failure
+  notify-failure:
+    name: Notify Failure
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [lint, test, build, deploy-dev, deploy-staging]
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "❌ Pipeline failed"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Author: ${{ github.actor }}"
+
+  # Job 8: Final status
+  pipeline-success:
+    name: Pipeline Complete
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, deploy-dev, deploy-staging]
+    if: success()
+    steps:
+      - name: ✅ Pipeline succeeded
+        run: |
+          echo "✅ All checks passed!"
+          echo "📦 Build: ${{ needs.build.outputs.image }}"
+          echo "🌍 Deployed to: Dev, Staging, Prod (pending approval)"
