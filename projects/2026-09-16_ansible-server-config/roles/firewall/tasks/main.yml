@@ -1,0 +1,43 @@
+---
+- name: Installer UFW
+  apt:
+    name: ufw
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Autoriser SSH (port 22)
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Autoriser HTTP (port 80)
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Autoriser HTTPS (port 443)
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Activer le firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Vérifier le status du firewall
+  shell: ufw status
+  register: ufw_status
+  changed_when: false
+
+- name: Afficher le status du firewall
+  debug:
+    msg: "{{ ufw_status.stdout_lines }}"
+
+- name: Afficher un message de succès
+  debug:
+    msg: "Role 'firewall' - UFW activé et configuré ✓"

@@ -1,0 +1,20 @@
+---
+- name: Configuration du serveur Linux
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Afficher les infos du système
+      debug:
+        msg: "Serveur {{ ansible_hostname }} - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+  roles:
+    - common
+    - webserver
+    - firewall
+
+  post_tasks:
+    - name: Afficher l'adresse IP du serveur
+      debug:
+        msg: "Configuration terminée. Serveur accessible à http://{{ ansible_default_ipv4.address }}"

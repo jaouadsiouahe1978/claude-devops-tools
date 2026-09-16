@@ -1,0 +1,94 @@
+---
+- name: Installer Nginx
+  apt:
+    name: nginx
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Assurer que Nginx est démarré et activé
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Créer le répertoire de la page web
+  file:
+    path: /var/www/custom
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Copier la page d'accueil personnalisée
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Serveur Configuré avec Ansible</title>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+                  text-align: center;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white;
+                  padding: 50px;
+              }
+              h1 { font-size: 3em; margin: 0; }
+              p { font-size: 1.2em; }
+              .info {
+                  background: rgba(0,0,0,0.3);
+                  padding: 20px;
+                  border-radius: 10px;
+                  margin-top: 20px;
+              }
+          </style>
+      </head>
+      <body>
+          <h1>✓ Serveur Configuré</h1>
+          <p>Déployé avec Ansible</p>
+          <div class="info">
+              <p><strong>Hostname:</strong> {{ ansible_hostname }}</p>
+              <p><strong>IP:</strong> {{ ansible_default_ipv4.address }}</p>
+              <p><strong>OS:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+              <p><strong>Date de déploiement:</strong> {{ ansible_date_time.iso8601 }}</p>
+          </div>
+      </body>
+      </html>
+    dest: /var/www/custom/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Configurer le virtualhost Nginx
+  copy:
+    content: |
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+
+          server_name _;
+
+          root /var/www/custom;
+          index index.html;
+
+          location / {
+              try_files $uri $uri/ =404;
+          }
+      }
+    dest: /etc/nginx/sites-available/default
+    backup: yes
+
+- name: Tester la configuration Nginx
+  shell: nginx -t
+  register: nginx_test
+  changed_when: false
+
+- name: Recharger Nginx
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: Afficher un message de succès
+  debug:
+    msg: "Role 'webserver' - Nginx configuré sur http://{{ ansible_default_ipv4.address }} ✓"

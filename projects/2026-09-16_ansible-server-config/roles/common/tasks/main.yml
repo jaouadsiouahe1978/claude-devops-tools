@@ -1,0 +1,42 @@
+---
+- name: Mettre à jour le cache APT
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Mettre à jour tous les packages
+  apt:
+    upgrade: dist
+  when: ansible_os_family == "Debian"
+
+- name: Installer les packages essentiels
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - python3-pip
+      - build-essential
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Configurer le timezone
+  timezone:
+    name: Europe/Paris
+
+- name: Créer les répertoires standard
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/apps
+    - /var/log/custom
+
+- name: Afficher un message de succès
+  debug:
+    msg: "Role 'common' - Configuration de base terminée ✓"
