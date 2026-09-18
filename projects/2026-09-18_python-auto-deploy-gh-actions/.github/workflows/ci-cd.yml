@@ -1,0 +1,224 @@
+name: CI/CD Pipeline
+
+# Déclenche le workflow
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:  # Permet un déclenchement manuel
+
+# Variables d'environnement
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===== JOB 1: Tests et Qualité de Code =====
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      # 1. Cloner le repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configurer Python
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'  # Cache les dépendances
+
+      # 3. Installer les dépendances
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Linting avec flake8
+      - name: Lint with flake8
+        run: |
+          # S'arrête à la première erreur
+          flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warning seulement (ne bloque pas)
+          flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+
+      # 5. Vérifier le formatage avec black
+      - name: Check formatting with black
+        run: |
+          black --check app/ --diff
+
+      # 6. Tester avec pytest
+      - name: Run tests with pytest
+        run: |
+          pytest app/ -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      # 7. Uploader les rapports de couverture (optionnel)
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false  # Ne pas échouer si l'upload rate-limit
+
+  # ===== JOB 2: Build Docker Image =====
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test  # Dépend du succès des tests
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Configuration de Docker Buildx (pour la cross-compilation)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login à GitHub Container Registry (optionnel, pour private)
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name != 'pull_request'  # Pas besoin en PR
+
+      # Extraire les métadonnées
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      # Builder et pousser l'image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}  # Pousser si ce n'est pas une PR
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+  # ===== JOB 3: Security Scanning (optionnel) =====
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit safety
+
+      # Scan des dépendances dangereuses
+      - name: Check dependencies with safety
+        run: safety check --json
+        continue-on-error: true  # Ne pas bloquer si findings
+
+      # Scan du code pour les vulnérabilités
+      - name: Scan code with bandit
+        run: bandit -r app/ -f json -o bandit-report.json
+        continue-on-error: true
+
+  # ===== JOB 4: Notification =====
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    if: always()  # Toujours notifier, même en cas d'erreur
+    needs: [test, build]
+
+    steps:
+      - name: Determine workflow status
+        id: status
+        run: |
+          if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.build.result }}" == "success" ]; then
+            echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+            echo "color=00FF00" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ FAILURE" >> $GITHUB_OUTPUT
+            echo "color=FF0000" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post workflow summary
+        run: |
+          echo "### ${{ steps.status.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Result**: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Result**: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+
+      # Notification Slack (optionnel - nécessite un secret SLACK_WEBHOOK)
+      - name: Send Slack notification
+        if: failure()  # Notifier seulement en cas d'échec
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "CI/CD Pipeline Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ **CI/CD Pipeline Failed**\n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        if: ${{ secrets.SLACK_WEBHOOK != '' }}  # Seulement si le secret existe
+
+# ===== Concurrency (évite les builds parallèles sur la même branche) =====
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
