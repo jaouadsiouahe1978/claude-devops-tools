@@ -1,0 +1,28 @@
+[Unit]
+Description=Daily Backup Timer
+Documentation=man:systemd.timer(5)
+Requires=backup.service
+After=backup.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=*-*-* 02:00:00
+
+# Run every 6 hours as backup schedule
+# OnCalendar=*-*-* 00,06,12,18:00:00
+
+# Alternative: Run on specific days
+# OnCalendar=Mon..Fri *-*-* 02:00:00
+
+# Persistent state: if system was down at scheduled time,
+# run the service as soon as it boots
+Persistent=true
+
+# Accuracy: within 5 seconds
+AccuracySec=5s
+
+# Run immediately if missed
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

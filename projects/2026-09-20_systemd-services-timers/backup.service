@@ -1,0 +1,30 @@
+[Unit]
+Description=Custom Backup Service
+Documentation=file:///opt/backups/README.txt
+After=network.target
+Wants=backup.timer
+
+[Service]
+Type=oneshot
+User=backupuser
+Group=backupuser
+WorkingDirectory=/opt/backups
+ExecStart=/opt/backups/backup.sh
+
+# Security isolation
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=backup-service
+
+# Resource limits
+CPUQuota=50%
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

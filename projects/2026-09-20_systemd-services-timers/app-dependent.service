@@ -1,0 +1,49 @@
+[Unit]
+Description=Application Service (depends on Backup)
+Documentation=man:systemd.unit(5)
+
+# Service startup dependencies
+# This service only starts if backup.service is active
+Requires=backup.service
+After=backup.service
+
+# Optional: only start after network
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/app
+
+# Example: simple web server or application
+ExecStart=/bin/sleep infinity
+# ExecStart=/usr/bin/python3 /opt/app/main.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Startup/Shutdown timeouts
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# If 3 restarts in 60s, service enters failed state
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=app-service
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=100%
+TasksMax=50
+
+[Install]
+WantedBy=multi-user.target
