@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily Automated Backup Timer
+Documentation=https://example.com/backup-docs
+Requires=backup.service
+
+[Timer]
+# Run every day at 2:00 AM
+OnCalendar=*-*-* 02:00:00
+# Run on boot if previous run was missed
+Persistent=true
+# Randomize start time by 0-5 minutes to prevent load spikes
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

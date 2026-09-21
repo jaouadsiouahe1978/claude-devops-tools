@@ -1,0 +1,26 @@
+[Unit]
+Description=Automated Backup Service
+Documentation=https://example.com/backup-docs
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/backups/scripts/backup.sh daily
+StandardOutput=journal
+StandardError=journal
+Environment="BACKUP_TYPE=daily"
+
+# Resource limits
+CPUQuota=50%
+MemoryLimit=512M
+
+# Security settings
+PrivateTmp=yes
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/backups /home /etc /opt
+
+[Install]
+WantedBy=multi-user.target
