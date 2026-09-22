@@ -1,0 +1,8 @@
+{{- if .Values.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "my-app-chart.namespace" . }}
+  labels:
+    {{- include "my-app-chart.labels" . | nindent 4 }}
+{{- end }}

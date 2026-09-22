@@ -1,0 +1,51 @@
+# Development Environment Overrides
+namespace: dev
+
+replicaCount: 1
+
+frontend:
+  replicas: 1
+  env:
+    LOG_LEVEL: "debug"
+    ENVIRONMENT: "development"
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+  service:
+    type: NodePort
+
+backend:
+  replicas: 1
+  env:
+    FLASK_ENV: "development"
+    DATABASE_HOST: "my-app-db"
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: "myapp"
+    LOG_LEVEL: "debug"
+    DEBUG: "true"
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+
+database:
+  persistence:
+    enabled: true
+    size: "1Gi"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+ingress:
+  enabled: false

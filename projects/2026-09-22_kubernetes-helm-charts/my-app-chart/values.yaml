@@ -1,0 +1,140 @@
+# Default values for my-app-chart
+
+replicaCount: 2
+
+# Namespace configuration
+namespace: default
+createNamespace: true
+
+# Frontend Configuration
+frontend:
+  name: my-app-frontend
+  image:
+    repository: nginx
+    tag: "1.24"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 80
+  targetPort: 80
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+  env:
+    LOG_LEVEL: "info"
+    ENVIRONMENT: "dev"
+  service:
+    type: LoadBalancer
+    port: 80
+
+# Backend Configuration
+backend:
+  name: my-app-backend
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 5000
+  targetPort: 5000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+  env:
+    FLASK_ENV: "development"
+    DATABASE_HOST: "my-app-db"
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: "myapp"
+    LOG_LEVEL: "debug"
+  service:
+    type: ClusterIP
+    port: 5000
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 5000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 5000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Database Configuration
+database:
+  name: my-app-db
+  type: postgres
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  port: 5432
+  targetPort: 5432
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  env:
+    POSTGRES_USER: "appuser"
+    POSTGRES_DB: "myapp"
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    size: "5Gi"
+  service:
+    type: ClusterIP
+    port: 5432
+
+# ConfigMap data
+configMap:
+  APP_NAME: "my-awesome-app"
+  API_VERSION: "v1"
+  CACHE_TTL: "3600"
+
+# Secrets (base64 encoded)
+secrets:
+  POSTGRES_PASSWORD: "c2VjcmV0UGFzc3dvcmQxMjM="  # secretPassword123
+  DATABASE_URL: "cG9zdGdyZXM6Ly9hcHB1c2VyOnNlY3JldFBhc3N3b3JkMTIzQG15LWFwcC1kYjo1NDMyL215YXBw"  # postgres://appuser:secretPassword123@my-app-db:5432/myapp
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: "myapp.local"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.local
+
+# Labels to apply to all resources
+labels:
+  app: "my-app"
+  version: "1.0.0"
+  managed-by: "helm"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity: {}

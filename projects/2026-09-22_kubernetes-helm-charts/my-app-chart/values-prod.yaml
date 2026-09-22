@@ -1,0 +1,98 @@
+# Production Environment Overrides
+namespace: production
+
+replicaCount: 3
+
+frontend:
+  replicas: 3
+  env:
+    LOG_LEVEL: "warn"
+    ENVIRONMENT: "production"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+  service:
+    type: ClusterIP
+
+backend:
+  replicas: 3
+  env:
+    FLASK_ENV: "production"
+    DATABASE_HOST: "my-app-db"
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: "myapp"
+    LOG_LEVEL: "warning"
+    DEBUG: "false"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "2000m"
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 5000
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 5000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+database:
+  persistence:
+    enabled: true
+    storageClass: "fast-ssd"
+    size: "50Gi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: "api.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls-prod
+      hosts:
+        - api.example.com
+
+nodeSelector:
+  workload: "apps"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - my-app
+          topologyKey: kubernetes.io/hostname
