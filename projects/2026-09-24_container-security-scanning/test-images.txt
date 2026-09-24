@@ -1,0 +1,26 @@
+# Test images for security scanning
+# Add your Docker images here, one per line
+# Format: image:tag or image (uses 'latest' tag)
+
+# Base images - commonly used
+ubuntu:22.04
+ubuntu:20.04
+alpine:latest
+debian:bullseye
+
+# Application images - popular open-source
+nginx:latest
+nginx:1.25
+postgres:15-alpine
+postgres:14
+mysql:8.0
+redis:latest
+node:20-alpine
+node:18
+python:3.11-slim
+python:3.10
+
+# Note: Uncomment to scan your own images
+# your-registry.com/your-app:v1.0.0
+# gcr.io/your-project/your-service:latest
+# docker.io/yourorg/yourimage:tag
