@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  pg_primary:
+    image: postgres:15-alpine
+    container_name: pg_primary
+    hostname: pg_primary
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: repl_password
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./init-primary.sh:/docker-entrypoint-initdb.d/init-primary.sh
+      - ./postgresql-primary.conf:/etc/postgresql/postgresql.conf
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    networks:
+      - replication-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  pg_standby:
+    image: postgres:15-alpine
+    container_name: pg_standby
+    hostname: pg_standby
+    environment:
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: repl_password
+      PGUSER: replicator
+    volumes:
+      - pg_standby_data:/var/lib/postgresql/data
+      - ./init-standby.sh:/docker-entrypoint-initdb.d/init-standby.sh
+      - ./postgresql-standby.conf:/etc/postgresql/postgresql.conf
+    depends_on:
+      pg_primary:
+        condition: service_healthy
+    command: >
+      /bin/sh -c "
+      if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+        echo 'Initializing standby from primary...';
+        pg_basebackup -h pg_primary -D /var/lib/postgresql/data -U replicator -v -P;
+        touch /var/lib/postgresql/data/standby.signal;
+      fi;
+      postgres -c config_file=/etc/postgresql/postgresql.conf
+      "
+    ports:
+      - "5433:5432"
+    networks:
+      - replication-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U replicator -h localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  monitoring:
+    image: alpine:latest
+    container_name: pg_monitor
+    volumes:
+      - ./monitor.sh:/scripts/monitor.sh
+    depends_on:
+      - pg_primary
+      - pg_standby
+    networks:
+      - replication-net
+    command: sh /scripts/monitor.sh
+    restart: always
+
+volumes:
+  pg_primary_data:
+    driver: local
+  pg_standby_data:
+    driver: local
+
+networks:
+  replication-net:
+    driver: bridge
