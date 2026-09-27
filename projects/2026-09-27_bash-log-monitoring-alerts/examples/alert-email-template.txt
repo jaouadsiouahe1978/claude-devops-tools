@@ -1,0 +1,69 @@
+From: log-monitor@example.com
+To: ops-team@example.com
+Subject: [LOG ALERT] [CRITICAL] Error detected in /var/log/syslog
+Date: Tue, 27 Sep 2026 11:30:45 +0200
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+================================================================================
+                           LOG MONITORING ALERT
+================================================================================
+
+Alert Type: CRITICAL
+Timestamp: 2026-09-27 11:30:45
+Source File: /var/log/syslog
+
+ALERT MESSAGE
+================================================================================
+
+Out of disk space on /var/data (99% full) - immediate action required!
+
+DETECTED LINE
+================================================================================
+
+2026-09-27 10:45:33 CRITICAL Out of disk space on /var/data (99% full)
+
+CONTEXT (Last 5 matching lines)
+================================================================================
+
+2026-09-27 10:35:24 INFO Recovering from error, retrying...
+2026-09-27 10:45:33 CRITICAL Out of disk space on /var/data (99% full)
+2026-09-27 10:45:34 CRITICAL Please free space immediately
+2026-09-27 10:45:35 INFO Activating emergency cleanup procedure
+2026-09-27 11:00:12 INFO Cleanup completed, freed 150GB
+
+RECOMMENDED ACTIONS
+================================================================================
+
+1. Review the error immediately
+2. Check available disk space: df -h
+3. Investigate what's consuming disk space: du -sh /var/data/*
+4. Consider:
+   - Archiving old logs
+   - Cleaning temporary files
+   - Expanding storage capacity
+5. Verify the monitoring system:
+   - sudo systemctl status log-monitor
+   - sudo journalctl -u log-monitor -f
+
+MONITORING SYSTEM INFO
+================================================================================
+
+Monitor Version: 1.0
+Monitored Logs: /var/log/syslog, /var/log/auth.log, /var/log/apt/history.log
+Alert Method: Email
+Alert Throttle: 300 seconds (prevents alert spam)
+Configuration: /opt/log-monitor/config/log-monitor.conf
+
+HISTORICAL DATA
+================================================================================
+
+- Total alerts in last 24h: 3
+- Last alert: 2026-09-27 10:45:33 (CRITICAL)
+- Alert frequency: 2 CRITICAL, 1 ERROR
+- System status: DEGRADED (disk space issue)
+
+================================================================================
+This is an automated alert from the Log Monitor system.
+For questions or configuration changes, contact your DevOps team.
+================================================================================

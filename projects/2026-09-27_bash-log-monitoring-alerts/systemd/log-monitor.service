@@ -1,0 +1,33 @@
+[Unit]
+Description=Advanced Bash Log Monitoring and Alerting System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/log-monitor
+ExecStart=/opt/log-monitor/scripts/log-monitor.sh -c /opt/log-monitor/config/log-monitor.conf -f
+
+# Restart policies
+Restart=on-failure
+RestartSec=10
+
+# Resource limits
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=log-monitor
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log /var/log/log-monitor
+
+# Timeouts
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

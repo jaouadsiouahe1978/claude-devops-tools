@@ -1,0 +1,25 @@
+2026-09-27 08:15:23 INFO Starting application server
+2026-09-27 08:15:24 INFO Loading configuration from /etc/app/config.yaml
+2026-09-27 08:15:25 INFO Database connection pool initialized (size: 20)
+2026-09-27 08:15:26 INFO Listening on port 8080
+2026-09-27 08:23:45 WARNING High memory usage detected (85%)
+2026-09-27 08:23:46 WARNING Consider increasing memory allocation
+2026-09-27 08:45:12 ERROR Failed to connect to cache server (redis)
+2026-09-27 08:45:13 ERROR Retrying connection in 5 seconds
+2026-09-27 08:45:18 INFO Cache server reconnected successfully
+2026-09-27 09:15:00 INFO Database backup started
+2026-09-27 09:20:30 INFO Database backup completed (size: 2.4GB, duration: 5m30s)
+2026-09-27 10:05:45 WARNING CPU usage spike detected (92%)
+2026-09-27 10:05:46 WARNING Please check running processes
+2026-09-27 10:35:22 ERROR Database query timeout (10s)
+2026-09-27 10:35:23 ERROR Query: SELECT * FROM large_table WHERE id > 1000000
+2026-09-27 10:35:24 INFO Recovering from error, retrying...
+2026-09-27 10:45:33 CRITICAL Out of disk space on /var/data (99% full)
+2026-09-27 10:45:34 CRITICAL Please free space immediately
+2026-09-27 10:45:35 INFO Activating emergency cleanup procedure
+2026-09-27 11:00:12 INFO Cleanup completed, freed 150GB
+2026-09-27 11:15:00 FATAL Authentication service down
+2026-09-27 11:15:01 FATAL Unable to reach auth server at 192.168.1.100:3000
+2026-09-27 11:15:02 INFO Failover to backup auth server initiated
+2026-09-27 11:15:05 INFO Backup auth server online
+2026-09-27 12:00:00 INFO System running normally
