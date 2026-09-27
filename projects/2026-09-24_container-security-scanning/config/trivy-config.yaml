@@ -1,0 +1,90 @@
+# Trivy Configuration File
+# Complete configuration for container security scanning
+
+# Global settings
+debug: false
+insecure: false
+timeout: 5m
+
+# Image scanning settings
+image:
+  enabled: true
+  # Maximum number of concurrent scans
+  max-concurrent-scans: 4
+  # Image pull policy
+  pull-policy: IfNotPresent
+
+# Severity levels
+severity:
+  enabled: true
+  # Severities to report: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN
+  report-severities:
+    - CRITICAL
+    - HIGH
+    - MEDIUM
+  # Fail on specific severities
+  fail-on-severities:
+    - CRITICAL
+
+# Output format: table, json, sarif, cyclonedx, spdx, spdx-json, github
+output:
+  format: table
+  # Escape special characters in output
+  escape: false
+  # Print all layers
+  print-all: false
+
+# Vulnerability database
+db:
+  # Database repository
+  repository: ghcr.io/aquasecurity/trivy-db
+  # Update database
+  auto-update: true
+  # Skip update
+  skip-update: false
+  # Cache directory
+  cache-dir: ~/.cache/trivy
+
+# Filtering
+filter:
+  # Skip specific vulnerabilities by ID
+  skip-vulnerabilities: []
+  # Skip unfixed vulnerabilities
+  skip-unfixed: false
+  # Include non-fixed vulnerabilities
+  include-non-fixed: false
+
+# Logging
+logging:
+  # Log level: TRACE, DEBUG, INFO, WARN, ERROR
+  level: INFO
+  # Log format
+  format: text
+
+# Scan results
+results:
+  # Include SBOM in results
+  include-sbom: true
+  # Include repository metadata
+  include-repo-metadata: true
+
+# Performance settings
+performance:
+  # Maximum number of concurrent operations
+  max-concurrent-ops: 4
+  # Skip expensive checks
+  skip-expensive-checks: false
+
+# Misconfigurations
+misconfig:
+  enabled: true
+  # Scan container configuration
+  include-deployments: true
+
+# Secret scanning
+secret:
+  enabled: false
+
+# License detection
+license:
+  enabled: false
