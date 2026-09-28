@@ -1,0 +1,134 @@
+# Traefik Dynamic Configuration
+# Routes, Services, and Middleware defined in this file
+
+http:
+  # Middleware definitions
+  middlewares:
+    # Security headers
+    security-headers:
+      headers:
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+        customFrameOptionsValue: "SAMEORIGIN"
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsMaxAge: 63072000
+        stsPreload: true
+        customBrowserXssValue: "1; mode=block"
+        referrerPolicy: "strict-origin-when-cross-origin"
+        contentTypeNosniff: true
+
+    # Rate limiting for general endpoints
+    global-ratelimit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+
+    # Gzip compression
+    gzip-compression:
+      compress:
+        minResponseBodyBytes: 1000
+
+    # Basic auth example (credentials: user:password)
+    basic-auth:
+      basicAuth:
+        users:
+          - "user:$apr1$H6uskkkW$IgX3Se3q7maGIxQnrjQBm/"
+
+  # Routers - Define how requests are handled
+  routers:
+    # Web1 Router
+    web1-http:
+      rule: "Host(`web1.localhost`)"
+      entryPoints:
+        - web
+      service: web1-service
+      middlewares:
+        - gzip-compression
+
+    web1-https:
+      rule: "Host(`web1.localhost`)"
+      entryPoints:
+        - websecure
+      service: web1-service
+      middlewares:
+        - security-headers
+        - gzip-compression
+      tls:
+        certResolver: letsencrypt
+
+    # Web2 Router
+    web2-http:
+      rule: "Host(`web2.localhost`)"
+      entryPoints:
+        - web
+      service: web2-service
+      middlewares:
+        - gzip-compression
+
+    web2-https:
+      rule: "Host(`web2.localhost`)"
+      entryPoints:
+        - websecure
+      service: web2-service
+      middlewares:
+        - security-headers
+        - gzip-compression
+      tls:
+        certResolver: letsencrypt
+
+    # API Router with rate limiting
+    api-http:
+      rule: "Host(`api.localhost`) && PathPrefix(`/api`)"
+      entryPoints:
+        - web
+      service: api-service
+      middlewares:
+        - gzip-compression
+
+    api-https:
+      rule: "Host(`api.localhost`)"
+      entryPoints:
+        - websecure
+      service: api-service
+      middlewares:
+        - security-headers
+        - gzip-compression
+        - global-ratelimit
+      tls:
+        certResolver: letsencrypt
+
+  # Services - Load balancing configuration
+  services:
+    web1-service:
+      loadBalancer:
+        servers:
+          - url: "http://web1-service:80"
+        healthCheck:
+          scheme: "http"
+          path: "/"
+          interval: "10s"
+          timeout: "3s"
+
+    web2-service:
+      loadBalancer:
+        servers:
+          - url: "http://web2-service:80"
+        healthCheck:
+          scheme: "http"
+          path: "/"
+          interval: "10s"
+          timeout: "3s"
+
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://api-service:5000"
+        healthCheck:
+          scheme: "http"
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"

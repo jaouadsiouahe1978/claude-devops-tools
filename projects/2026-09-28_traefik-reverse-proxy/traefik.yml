@@ -1,0 +1,73 @@
+# Traefik Static Configuration
+# Learn more at: https://doc.traefik.io/traefik/
+
+# Log Configuration
+log:
+  level: INFO
+  format: json
+
+# Access Logs
+accessLog:
+  format: json
+
+# API Configuration
+api:
+  insecure: true
+  dashboard: true
+  debug: false
+
+# Entrypoints - Where Traefik listens
+entryPoints:
+  web:
+    address: ":80"
+    # Redirect HTTP to HTTPS
+    http:
+      redirections:
+        entrypoint:
+          scheme: https
+          permanent: false
+          port: "443"
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        # Default certificate for all domains
+        certResolver: letsencrypt
+        domains:
+          - main: localhost
+            sans:
+              - "*.localhost"
+
+# Providers - Where services come from
+providers:
+  # Docker provider for auto-discovery
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-network
+    swarmMode: false
+
+  # File provider for dynamic configuration
+  file:
+    filename: /dynamic-config.yml
+    watch: true
+
+# Certificate Resolvers - ACME for Let's Encrypt
+certificateResolvers:
+  letsencrypt:
+    # Use self-signed for local development
+    acme:
+      email: admin@example.com
+      storage: /acme.json
+      # For production: use the standard Let's Encrypt server
+      # server: https://acme-v02.api.letsencrypt.org/directory
+      # For testing: use staging server
+      server: https://acme-staging-v02.api.letsencrypt.org/directory
+      httpChallenge:
+        entryPoint: web
+
+# Global Configuration
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false

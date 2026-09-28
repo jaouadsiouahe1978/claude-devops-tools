@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Service 2 - Apache</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #f5576c;
+            margin-bottom: 20px;
+        }
+        .badge {
+            display: inline-block;
+            background: #f5576c;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .info {
+            background: #fff0f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .info p {
+            margin: 10px 0;
+            color: #333;
+        }
+        .info strong {
+            color: #f5576c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Web Service 2</h1>
+        <span class="badge">Apache</span>
+        <span class="badge">Port 80</span>
+
+        <div class="info">
+            <p><strong>Status:</strong> ✅ Running</p>
+            <p><strong>Container:</strong> web2-service</p>
+            <p><strong>Image:</strong> httpd:2.4-alpine</p>
+            <p><strong>Hostname:</strong> web2.localhost</p>
+            <p><strong>Routed via Traefik</strong></p>
+        </div>
+
+        <p style="color: #666; margin-top: 20px;">
+            This service is running on Apache HTTP Server and is being reverse proxied through Traefik.
+            It demonstrates multiple backend services behind one reverse proxy!
+        </p>
+    </div>
+</body>
+</html>
