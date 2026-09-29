@@ -1,0 +1,7 @@
+---
+# Handlers pour le rôle common
+
+- name: restart services
+  debug:
+    msg: "Services need restart for limits to take effect"
+  listen: "restart services"

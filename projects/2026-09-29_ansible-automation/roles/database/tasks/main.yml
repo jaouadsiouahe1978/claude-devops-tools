@@ -1,0 +1,87 @@
+---
+# Role Database - Installation et configuration PostgreSQL
+
+- name: Ajouter repository PostgreSQL
+  shell: |
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/apt.postgresql.org.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
+  args:
+    creates: /etc/apt/sources.list.d/pgdg.list
+
+- name: Mettre à jour cache apt
+  apt:
+    update_cache: yes
+
+- name: Installer PostgreSQL
+  apt:
+    name:
+      - "postgresql-{{ postgres_version }}"
+      - "postgresql-contrib-{{ postgres_version }}"
+      - postgresql-common
+      - psycopg2-binary
+    state: present
+
+- name: Créer répertoire backup
+  file:
+    path: "{{ postgres_backup_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+
+- name: Créer base de données applicative
+  become_user: postgres
+  postgresql_db:
+    name: appdb
+    encoding: UTF8
+    lc_collate: C.UTF-8
+    lc_ctype: C.UTF-8
+    state: present
+
+- name: Créer utilisateur PostgreSQL
+  become_user: postgres
+  postgresql_user:
+    name: appuser
+    password: appuser123  # À utiliser avec des secrets en production!
+    role_attr_flags: CREATEDB,NOSUPERUSER
+    state: present
+
+- name: Accorder droits sur la base
+  become_user: postgres
+  postgresql_privs:
+    database: appdb
+    privs: ALL
+    type: database
+    roles: appuser
+
+- name: Configurer postgresql.conf
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: "^#listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Configurer pg_hba.conf pour accès local
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    insertbefore: "^# IPv4 local"
+    line: "host    appdb       appuser     0.0.0.0/0               md5"
+    state: present
+  notify: restart postgresql
+
+- name: S'assurer que PostgreSQL est démarré
+  systemd:
+    name: "postgresql"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Vérifier la connexion PostgreSQL
+  postgresql_ping:
+    db: appdb
+  register: postgres_ping
+  ignore_errors: yes
+
+- name: Afficher statut PostgreSQL
+  debug:
+    msg: "PostgreSQL status: {{ postgres_ping }}"

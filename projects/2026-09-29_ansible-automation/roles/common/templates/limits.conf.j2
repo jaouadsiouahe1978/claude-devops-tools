@@ -1,0 +1,9 @@
+# /etc/security/limits.d/99-app.conf
+# Limites de ressources pour l'utilisateur applicatif
+
+{{ app_user }}    soft    nofile    65535
+{{ app_user }}    hard    nofile    65535
+{{ app_user }}    soft    nproc     32768
+{{ app_user }}    hard    nproc     32768
+{{ app_user }}    soft    memlock   unlimited
+{{ app_user }}    hard    memlock   unlimited

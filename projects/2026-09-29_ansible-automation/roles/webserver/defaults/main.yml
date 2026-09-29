@@ -1,0 +1,10 @@
+---
+# Default variables pour le rôle webserver
+
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_worker_connections: 2048
+nginx_keepalive_timeout: 65
+
+app_port: 8080
+server_name: app.example.com

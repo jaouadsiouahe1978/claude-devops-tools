@@ -1,0 +1,41 @@
+# Vagrant
+.vagrant/
+Vagrantfile.local
+
+# Ansible
+*.retry
+ansible.log
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+
+# Backups
+*.bak
+*.backup
+.backup/
+
+# OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Environment
+.env
+.env.local
+vault_pass.txt
+
+# Logs
+*.log
+logs/
+
+# Secrets (never commit!)
+secrets.yml
+vault.yml

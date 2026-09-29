@@ -1,0 +1,65 @@
+---
+# Site.yml - Playbook principal pour orchestrer l'infrastructure complète
+# Exécution: ansible-playbook -i inventory/hosts.yml playbooks/site.yml -v
+
+- name: Orchestration Infrastructure Complète
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  pre_tasks:
+    - name: Afficher info système
+      debug:
+        msg: "Déploiement sur {{ inventory_hostname }} ({{ ansible_os_family }})"
+
+    - name: Mettre à jour le cache apt
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+  roles:
+    - role: common
+      tags: ['common', 'always']
+
+# Déployer les serveurs web
+- name: Configuration Serveurs Web
+  hosts: webservers
+  become: yes
+
+  roles:
+    - role: webserver
+      tags: ['web', 'nginx']
+
+# Déployer la base de données
+- name: Configuration Serveurs Database
+  hosts: dbservers
+  become: yes
+  serial: 1  # S'assurer qu'une seule DB se configure à la fois
+
+  roles:
+    - role: database
+      tags: ['db', 'postgres']
+
+# Déployer le monitoring
+- name: Configuration Monitoring
+  hosts: monitoring
+  become: yes
+
+  roles:
+    - role: monitoring
+      tags: ['monitoring', 'prometheus']
+
+# Post-déploiement - tests et vérifications
+- name: Post-Deployment Verification
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: Ping tous les hôtes
+      ping:
+      register: ping_result
+
+    - name: Afficher les résultats
+      debug:
+        msg: "{{ ansible_host }} répond: {{ ping_result }}"

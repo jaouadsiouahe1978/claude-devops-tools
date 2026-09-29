@@ -1,0 +1,85 @@
+---
+# Role Webserver - Installation et configuration Nginx
+
+- name: Installer Nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Installer dépendances supplémentaires
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+    state: present
+
+- name: Créer répertoire pour l'application
+  file:
+    path: "{{ app_home }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Déployer index.html de test
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Ansible Deployed App</title>
+          <style>
+              body { font-family: Arial; text-align: center; margin-top: 50px; }
+              .success { color: green; font-size: 24px; }
+          </style>
+      </head>
+      <body>
+          <div class="success">✓ Application deployed with Ansible!</div>
+          <p>Serveur: {{ ansible_hostname }}</p>
+          <p>IP: {{ ansible_default_ipv4.address }}</p>
+          <p>Deployment time: {{ ansible_date_time.iso8601 }}</p>
+      </body>
+      </html>
+    dest: "{{ app_home }}/index.html"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+- name: Configurer Nginx - Créer vhost
+  template:
+    src: nginx_vhost.j2
+    dest: /etc/nginx/sites-available/app.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+
+- name: Activer le vhost
+  file:
+    src: /etc/nginx/sites-available/app.conf
+    dest: /etc/nginx/sites-enabled/app.conf
+    state: link
+  notify: restart nginx
+
+- name: Désactiver site par défaut
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: restart nginx
+
+- name: Tester la configuration Nginx
+  shell: nginx -t
+  register: nginx_test
+  changed_when: false
+
+- name: Afficher résultat test Nginx
+  debug:
+    msg: "{{ nginx_test.stderr }}"
+
+- name: S'assurer que Nginx est démarré
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+    daemon_reload: yes

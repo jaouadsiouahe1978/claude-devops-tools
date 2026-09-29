@@ -1,0 +1,8 @@
+---
+# Default variables pour le rôle common
+
+app_user: appuser
+app_group: appuser
+app_home: /opt/app
+env: production
+timezone: UTC

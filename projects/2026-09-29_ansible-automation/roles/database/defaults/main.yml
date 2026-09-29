@@ -1,0 +1,13 @@
+---
+# Default variables pour le rôle database
+
+postgres_version: "14"
+postgres_port: 5432
+postgres_user: postgres
+postgres_data_dir: /var/lib/postgresql
+postgres_backup_dir: /backups/postgresql
+
+# Création de BD
+db_name: appdb
+db_user: appuser
+db_password: "appuser123"  # À utiliser avec Ansible Vault en production!

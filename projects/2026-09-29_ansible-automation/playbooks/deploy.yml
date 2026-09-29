@@ -1,0 +1,83 @@
+---
+# Deploy.yml - Playbook pour déployer/mettre à jour l'application
+
+- name: Déployer l'application
+  hosts: webservers
+  become: yes
+  serial: 1  # Déployer un serveur à la fois (zero-downtime)
+
+  vars:
+    app_version: "{{ app_version | default('1.0.0') }}"
+    git_repo: "{{ git_repo | default('https://github.com/example/app.git') }}"
+    git_branch: "{{ git_branch | default('main') }}"
+
+  pre_tasks:
+    - name: Afficher la version de déploiement
+      debug:
+        msg: "Déploiement version {{ app_version }} sur {{ inventory_hostname }}"
+
+    - name: Retirer le serveur du load balancer
+      shell: |
+        echo "{{ inventory_hostname }}" > /tmp/maintenance_mode.txt
+      notify: enable maintenance mode
+
+  tasks:
+    - name: Créer répertoire d'application
+      file:
+        path: "{{ app_home }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: Télécharger le code applicatif
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ app_home }}/repo"
+        version: "{{ git_branch }}"
+        update: yes
+      become_user: "{{ app_user }}"
+
+    - name: Installer dépendances Python (si applicable)
+      shell: |
+        cd {{ app_home }}/repo
+        pip install -r requirements.txt
+      ignore_errors: yes
+
+    - name: Démarrer les nouveaux services
+      systemd:
+        name: app
+        state: restarted
+        enabled: yes
+      ignore_errors: yes
+
+    - name: Vérifier la santé de l'application
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 5
+      delay: 5
+      until: health_check.status == 200
+
+  post_tasks:
+    - name: Ajouter le serveur au load balancer
+      shell: |
+        rm -f /tmp/maintenance_mode.txt
+      notify: disable maintenance mode
+
+    - name: Afficher résumé du déploiement
+      debug:
+        msg: "✅ Déploiement terminé sur {{ inventory_hostname }}"
+
+  handlers:
+    - name: enable maintenance mode
+      debug:
+        msg: "Mode maintenance activé pour {{ inventory_hostname }}"
+      listen: "enable maintenance mode"
+
+    - name: disable maintenance mode
+      debug:
+        msg: "Mode maintenance désactivé pour {{ inventory_hostname }}"
+      listen: "disable maintenance mode"
