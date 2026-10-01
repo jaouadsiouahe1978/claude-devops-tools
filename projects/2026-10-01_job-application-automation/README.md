@@ -1,14 +1,13 @@
 # 📨 Automatisation fiable des candidatures
 
-Outil Python (bibliothèque standard uniquement) qui envoie des candidatures personnalisées par email, **sans spam, sans doublon et avec traçabilité**.
+Outil Python (bibliothèque standard uniquement) qui envoie des candidatures personnalisées par email, **100 % automatiquement** (aucune validation humaine), sans spam, sans doublon et avec traçabilité.
 
 ## Ce qui rend l'envoi fiable
 
 | Risque | Garde-fou |
 |---|---|
-| Envoyer une candidature non relue | Colonne `valide` : seules les lignes à `oui` partent |
 | Envoyer deux fois au même recruteur | Registre SQLite `data/envois.db` (clé = email + poste) |
-| Partir par erreur | **Dry-run par défaut**, `--confirm` obligatoire pour l'envoi réel |
+| Lancement manuel par erreur | Dry-run en ligne de commande, `--confirm` pour l'envoi réel (le timer systemd l'inclut) |
 | Être classé spam / bloqué par Gmail | Quota journalier (10) et délai entre envois (120 s) |
 | Adresse fausse ou domaine mort | Validation du format et du MX (DNS) |
 | Template cassé, CV oublié | `validate` vérifie variables, pièces jointes et taille (≤ 5 Mo) |
@@ -33,15 +32,14 @@ pip install dnspython                                           # optionnel, vé
 ## Le flux de travail
 
 ```bash
-# 1. Ajouter des offres dans candidatures.csv (valide=non), avec une accroche personnalisée
-# 2. Contrôler
+# 1. Ajouter des offres dans candidatures.csv, avec une accroche personnalisée
+# 2. (facultatif) Contrôler
 ./candidatures.py validate
 ./candidatures.py preview --entreprise "Exemple SAS"
-# 3. Passer valide=oui sur les lignes relues
-# 4. Simuler puis envoyer
+# 3. Simuler puis envoyer
 ./candidatures.py send
 ./candidatures.py send --confirm
-# 5. Suivre
+# 4. Suivre
 ./candidatures.py status
 ./candidatures.py relances            # liste les candidatures sans réponse depuis 10 jours
 ./candidatures.py relances --confirm  # envoie la relance dans le même fil (In-Reply-To)
@@ -53,7 +51,6 @@ pip install dnspython                                           # optionnel, vé
 |---|---|---|
 | `entreprise`, `poste`, `email` | ✅ | Destinataire |
 | `template` | ✅ | Nom d'un fichier dans `templates/` (`devops`, `linux`…) |
-| `valide` | ✅ | `oui` = relu, prêt à partir |
 | `contact` | | « Madame Martin » (sinon « Madame, Monsieur ») |
 | `url_offre`, `accroche` | | Personnalisation : une phrase spécifique à l'entreprise fait toute la différence |
 
@@ -69,7 +66,7 @@ systemctl --user daemon-reload && systemctl --user enable --now candidatures.tim
 systemctl --user list-timers ; journalctl --user -u candidatures -f
 ```
 
-Envoi en semaine à 9 h (± 15 min). Vous n'avez plus qu'à passer des lignes à `valide=oui`.
+Envoi en semaine à 9 h (± 15 min). Toute nouvelle ligne ajoutée au CSV part automatiquement au prochain passage si elle passe les contrôles ; les lignes invalides sont ignorées et signalées dans le log et sur Slack.
 
 ## Tests
 

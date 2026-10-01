@@ -2,7 +2,7 @@
 """Envoi automatisé et fiable de candidatures par email.
 
 Principes de fiabilité :
-  - validation humaine : seules les lignes avec valide=oui sont envoyées
+  - 100 % automatique : toute ligne qui passe les contrôles automatiques est envoyée
   - idempotence       : registre SQLite, jamais deux envois pour (email, poste)
   - garde-fous        : dry-run par défaut, quota journalier, délai entre envois
   - robustesse        : retry avec backoff sur erreurs SMTP temporaires, verrou anti-double exécution
@@ -33,7 +33,7 @@ from string import Template
 
 BASE_DIR = Path(__file__).resolve().parent
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
-REQUIRED_COLUMNS = {"entreprise", "poste", "email", "template", "valide"}
+REQUIRED_COLUMNS = {"entreprise", "poste", "email", "template"}
 MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 TRANSIENT_SMTP_CODES = {421, 450, 451, 452}
 
@@ -46,7 +46,6 @@ class Candidature:
     poste: str
     email: str
     template: str
-    valide: str
     contact: str = ""
     url_offre: str = ""
     accroche: str = ""
@@ -263,7 +262,7 @@ def cmd_validate(args, cfg, db) -> int:
         state = "DEJA ENVOYEE" if already_sent(db, c.key) else ("OK" if not errs else "KO")
         if errs:
             ko += 1
-        print(f"[{state:12}] {c.entreprise} — {c.poste} <{c.email}> valide={c.valide}")
+        print(f"[{state:12}] {c.entreprise} — {c.poste} <{c.email}>")
         for e in errs:
             print(f"               ↳ {e}")
     print(f"\n{len(rows)} lignes, {ko} en erreur")
@@ -289,9 +288,6 @@ def cmd_send(args, cfg, db) -> int:
     dry = not args.confirm
     sent, skipped, failed = [], 0, []
     for c in load_candidatures(args.csv):
-        if c.valide.lower() not in ("oui", "yes", "1", "x"):
-            skipped += 1
-            continue
         if already_sent(db, c.key):
             log.info("Déjà envoyée, ignorée: %s — %s", c.entreprise, c.poste)
             skipped += 1
@@ -353,7 +349,7 @@ def cmd_relances(args, cfg, db) -> int:
                       (limit,)).fetchall()
     tpl = BASE_DIR / "templates" / "relance.txt"
     for key, entreprise, poste, email, msg_id in rows:
-        c = Candidature(entreprise, poste, email, "relance", "oui")
+        c = Candidature(entreprise, poste, email, "relance")
         if not args.confirm:
             print(f"À relancer : {entreprise} — {poste} <{email}>")
             continue
