@@ -1,0 +1,87 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# Alert routing
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  routes:
+    # Critical alerts
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 0s
+      repeat_interval: 1h
+
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      repeat_interval: 4h
+
+    # Database alerts
+    - match:
+        component: database
+      receiver: 'database-team'
+      group_by: ['alertname', 'severity']
+
+    # Container alerts
+    - match:
+        component: container
+      receiver: 'devops-team'
+
+# Receivers
+receivers:
+  - name: 'default'
+    slack_configs:
+      - channel: '#monitoring'
+        title: 'Prometheus Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  - name: 'critical'
+    slack_configs:
+      - channel: '#critical-alerts'
+        title: '🚨 CRITICAL ALERT'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_KEY'
+        description: '{{ .GroupLabels.alertname }}'
+
+  - name: 'warnings'
+    slack_configs:
+      - channel: '#warnings'
+        title: '⚠️  WARNING'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+  - name: 'database-team'
+    slack_configs:
+      - channel: '#database-alerts'
+        title: 'Database Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}'
+
+  - name: 'devops-team'
+    slack_configs:
+      - channel: '#devops-alerts'
+        title: 'Infrastructure Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+# Inhibition rules (suppress alerts based on conditions)
+inhibit_rules:
+  # Suppress warning if critical exists
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+  # Suppress if instance is down
+  - source_match:
+      alertname: 'InstanceDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['instance']
