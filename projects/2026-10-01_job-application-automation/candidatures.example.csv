@@ -1,0 +1,3 @@
+entreprise,poste,email,contact,url_offre,template,valide,accroche
+Exemple SAS,Ingénieur DevOps junior,recrutement@exemple-sas.fr,Madame Martin,https://exemple-sas.fr/jobs/42,devops,non,"Votre migration vers Kubernetes annoncée sur votre blog m'a particulièrement intéressé."
+Autre Corp,Administrateur systèmes Linux,rh@autre-corp.fr,,https://autre-corp.fr/carrieres,linux,non,

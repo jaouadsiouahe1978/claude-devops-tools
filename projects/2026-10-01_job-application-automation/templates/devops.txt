@@ -1,0 +1,16 @@
+Subject: Candidature – $poste – $nom
+
+Bonjour $contact,
+
+Je vous adresse ma candidature pour le poste « $poste » au sein de $entreprise ($url_offre).
+
+$accroche
+
+Actuellement en formation DevOps/SRE à Grenoble, je pratique au quotidien Linux, Docker, Kubernetes, Terraform, Ansible, GitHub Actions ainsi que la supervision avec Prometheus et Grafana. Mes réalisations sont publiques sur GitHub : $github
+
+Vous trouverez mon CV en pièce jointe. Je serais ravi d'échanger avec vous lors d'un entretien.
+
+Cordialement,
+$nom
+$telephone
+$linkedin
