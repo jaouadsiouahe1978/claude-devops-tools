@@ -1,0 +1,10 @@
+[Unit]
+Description=Envoi des candidatures en semaine à 9h
+
+[Timer]
+OnCalendar=Mon..Fri 09:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

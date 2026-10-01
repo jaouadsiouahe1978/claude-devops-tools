@@ -1,0 +1,11 @@
+Subject: Relance – candidature $poste – $nom
+
+Bonjour $contact,
+
+Je me permets de revenir vers vous concernant ma candidature au poste « $poste » chez $entreprise, envoyée il y a quelques jours.
+
+Le poste m'intéresse toujours vivement et je reste disponible pour en discuter à votre convenance.
+
+Cordialement,
+$nom
+$telephone

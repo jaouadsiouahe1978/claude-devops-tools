@@ -1,0 +1,16 @@
+Subject: Candidature – $poste – $nom
+
+Bonjour $contact,
+
+Je souhaite vous proposer ma candidature pour le poste « $poste » chez $entreprise ($url_offre).
+
+$accroche
+
+Administrateur Linux en formation DevOps/DevSecOps, j'automatise l'exploitation (Bash, Python, Ansible), je sécurise les systèmes (durcissement, gestion des accès, scan de vulnérabilités) et je mets en place le monitoring (Prometheus, Grafana, alerting Slack). Mes projets : $github
+
+Mon CV est joint à ce message. Je reste à votre disposition pour un entretien.
+
+Cordialement,
+$nom
+$telephone
+$linkedin

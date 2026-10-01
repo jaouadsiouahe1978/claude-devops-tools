@@ -1,0 +1,5 @@
+config.toml
+candidatures.csv
+data/
+cv/*.pdf
+__pycache__/
