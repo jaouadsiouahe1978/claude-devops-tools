@@ -1,0 +1,19 @@
+# Ansible requirements for deployment
+
+# Core
+ansible==2.10.7
+ansible-core==2.14.0
+
+# AWS support
+boto3==1.26.0
+botocore==1.29.0
+
+# Additional modules
+jinja2==3.1.2
+pyyaml==6.0
+
+# Optional but useful
+ansible-lint==6.8.0
+yamllint==1.26.3
+molecule==4.0.1
+jmespath==1.0.1

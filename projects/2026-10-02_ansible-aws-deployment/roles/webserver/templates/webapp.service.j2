@@ -1,0 +1,41 @@
+[Unit]
+Description=Flask Web Application
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_home }}
+
+# Environment variables
+EnvironmentFile={{ app_home }}/.env
+
+# Startup
+ExecStart={{ app_home }}/venv/bin/gunicorn \
+    --workers {{ app_workers }} \
+    --worker-class sync \
+    --bind 127.0.0.1:{{ app_port }} \
+    --timeout 30 \
+    --access-logfile /var/log/app/access.log \
+    --error-logfile /var/log/app/error.log \
+    --log-level {{ log_level }} \
+    {{ app_wsgi }}
+
+# Restart policy
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=65536
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

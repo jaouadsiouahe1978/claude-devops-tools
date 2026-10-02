@@ -1,0 +1,85 @@
+---
+# Playbook de rollback - Revert à une version précédente
+# Usage: ansible-playbook playbooks/rollback.yml -i inventory/hosts.ini -e "rollback_version=1.0.0"
+
+- name: Rollback application
+  hosts: webservers
+  vars:
+    backup_dir: "/opt/webapp/backups"
+    current_version_file: "/opt/webapp/VERSION"
+
+  pre_tasks:
+    - name: Validate rollback version
+      fail:
+        msg: "rollback_version variable is required"
+      when: rollback_version is not defined
+
+    - name: Get current version
+      shell: cat {{ current_version_file }}
+      register: current_version
+      changed_when: false
+
+    - name: Check if backup exists
+      stat:
+        path: "{{ backup_dir }}/app-{{ rollback_version }}"
+      register: backup_exists
+      changed_when: false
+
+    - name: Fail if backup not found
+      fail:
+        msg: "Backup for version {{ rollback_version }} not found"
+      when: not backup_exists.stat.exists
+
+  tasks:
+    - name: Stop application
+      service:
+        name: webapp
+        state: stopped
+      become: yes
+
+    - name: Restore backup
+      command: "cp -r {{ backup_dir }}/app-{{ rollback_version }}/* {{ app_home }}/"
+      become: yes
+      become_user: "{{ app_user }}"
+
+    - name: Update version file
+      copy:
+        content: "{{ rollback_version }}"
+        dest: "{{ current_version_file }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+      become: yes
+
+    - name: Start application
+      service:
+        name: webapp
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:{{ app_port }}"
+        method: GET
+        status_code: 200
+      register: webapp_status
+      until: webapp_status is succeeded
+      retries: 5
+      delay: 10
+
+  post_tasks:
+    - name: Rollback summary
+      debug:
+        msg: |
+          Rollback completed successfully!
+          Previous version: {{ current_version.stdout }}
+          Rolled back to: {{ rollback_version }}
+          Server: {{ inventory_hostname }}
+
+    - name: Log rollback
+      lineinfile:
+        path: "{{ app_home }}/rollback.log"
+        line: "{{ ansible_date_time.iso8601 }} - Rollback from {{ current_version.stdout }} to {{ rollback_version }}"
+        create: yes
+      become: yes
+      ignore_errors: yes

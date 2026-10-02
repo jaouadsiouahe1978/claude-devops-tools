@@ -1,0 +1,25 @@
+---
+# Handlers pour le role webserver
+
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+  become: yes
+
+- name: reload nginx
+  service:
+    name: nginx
+    state: reloaded
+  become: yes
+
+- name: restart webapp
+  service:
+    name: webapp
+    state: restarted
+  become: yes
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: yes

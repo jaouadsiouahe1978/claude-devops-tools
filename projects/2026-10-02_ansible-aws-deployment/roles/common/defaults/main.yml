@@ -1,0 +1,10 @@
+---
+# Default variables for common role
+
+app_user: appuser
+app_group: appuser
+app_home: /opt/webapp
+
+# System configuration
+timezone: UTC
+ntp_server: time.google.com
