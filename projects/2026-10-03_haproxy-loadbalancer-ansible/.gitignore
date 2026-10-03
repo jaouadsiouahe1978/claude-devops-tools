@@ -1,0 +1,17 @@
+*.pyc
+__pycache__/
+.cache/
+*.retry
+.vault_pass
+.ansible/
+*.log
+.DS_Store
+.env
+.venv/
+venv/
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml

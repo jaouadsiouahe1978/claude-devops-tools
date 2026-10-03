@@ -1,0 +1,18 @@
+---
+- name: Restart HAProxy
+  systemd:
+    name: haproxy
+    state: restarted
+  listen: "Restart HAProxy"
+
+- name: Reload HAProxy
+  systemd:
+    name: haproxy
+    state: reloaded
+  listen: "Reload HAProxy"
+
+- name: Restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+  listen: "Restart rsyslog"

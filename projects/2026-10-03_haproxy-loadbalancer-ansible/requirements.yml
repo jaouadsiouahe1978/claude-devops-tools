@@ -1,0 +1,16 @@
+---
+# Ansible Galaxy requirements
+# Install with: ansible-galaxy install -r requirements.yml
+
+collections:
+  - name: ansible.posix
+    version: ">=1.5.0"
+  - name: community.general
+    version: ">=5.0.0"
+
+# Optional: Add specific community roles for enhanced functionality
+# roles:
+#   - src: geerlingguy.haproxy
+#     version: 4.4.4
+#   - src: geerlingguy.nginx
+#     version: 5.3.0

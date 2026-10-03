@@ -1,0 +1,77 @@
+user {{ nginx_user }};
+worker_processes {{ nginx_worker_processes }};
+pid /run/nginx.pid;
+error_log {{ nginx_error_log }};
+
+events {
+    worker_connections {{ nginx_worker_connections }};
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time uct="$upstream_connect_time" '
+                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+    access_log {{ nginx_access_log }} main;
+
+    # Performance optimizations
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout {{ nginx_keepalive_timeout }};
+    types_hash_max_size 2048;
+    client_max_body_size {{ nginx_client_max_body_size }};
+    server_tokens {{ nginx_server_tokens }};
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml text/javascript
+               application/json application/javascript application/xml+rss
+               application/rss+xml application/atom+xml image/svg+xml
+               text/x-component text/x-cross-domain-policy;
+    gzip_disable "msie6";
+
+    # Virtual host configuration
+    server {
+        listen {{ nginx_listen_port }} default_server;
+        listen [::]:{{ nginx_listen_port }} default_server;
+        server_name {{ nginx_server_name }};
+
+        access_log {{ nginx_access_log }} main;
+        error_log {{ nginx_error_log }};
+
+        # Health check endpoint
+        location {{ nginx_health_endpoint }} {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+
+        # Default location
+        location {{ nginx_default_location }} {
+            default_type text/plain;
+            return 200 "Nginx Backend - {{ ansible_hostname }}\nServer IP: {{ ansible_default_ipv4.address }}\nTime: $(date '+%Y-%m-%d %H:%M:%S %Z')\n";
+        }
+
+        # Deny access to sensitive files
+        location ~ /\. {
+            deny all;
+            access_log off;
+            log_not_found off;
+        }
+    }
+
+    # Include additional configuration files
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}
