@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app-namespace
+data:
+  FLASK_ENV: production
+  ENVIRONMENT: kubernetes
+  DB_HOST: mysql-service
+  DB_NAME: appdb
+  DB_USER: appuser
