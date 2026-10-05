@@ -1,0 +1,218 @@
+groups:
+  # ===== SYSTEM ALERTS =====
+  - name: system-alerts
+    interval: 30s
+    rules:
+      # Instance Down
+      - alert: InstanceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Instance {{ $labels.job }} ({{ $labels.instance }}) is DOWN"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."
+
+      # High CPU Usage
+      - alert: HighCPU
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }} (current: {{ $value | humanize }}%)"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% on {{ $labels.instance }} (current: {{ $value | humanize }}%)"
+
+      # Disk Space Low
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Available disk space is below 15% on {{ $labels.instance }} (current: {{ $value | humanize }}%)"
+
+      # Critical Disk Space
+      - alert: CriticalDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "CRITICAL: Disk space critically low on {{ $labels.instance }}"
+          description: "Available disk space is below 5% on {{ $labels.instance }} (current: {{ $value | humanize }}%)"
+
+      # High Load Average
+      - alert: HighLoadAverage
+        expr: node_load15 > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High load average on {{ $labels.instance }}"
+          description: "Load average (15min) is high on {{ $labels.instance }} (current: {{ $value | humanize }})"
+
+  # ===== DOCKER CONTAINER ALERTS =====
+  - name: container-alerts
+    interval: 30s
+    rules:
+      # Container Down
+      - alert: ContainerDown
+        expr: container_last_seen < time() - 300
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} is down"
+          description: "Container {{ $labels.name }} on {{ $labels.id }} hasn't been seen for 5 minutes"
+
+      # High Container Memory
+      - alert: HighContainerMemory
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} has high memory usage"
+          description: "Container {{ $labels.name }} memory usage is {{ $value | humanize }}% of limit"
+
+      # Container Restart Loop
+      - alert: ContainerRestartLoop
+        expr: rate(container_last_seen[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting frequently"
+          description: "Container {{ $labels.name }} is restarting at {{ $value | humanize }} times per second"
+
+  # ===== DATABASE ALERTS =====
+  - name: postgres-alerts
+    interval: 30s
+    rules:
+      # PostgreSQL Down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL on {{ $labels.instance }} is DOWN"
+          description: "Cannot connect to PostgreSQL on {{ $labels.instance }} for 5 minutes"
+
+      # High Connection Count
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL has high connection count"
+          description: "PostgreSQL has {{ $value }} active connections (threshold: 80)"
+
+      # Slow Queries
+      - alert: PostgreSQLSlowQuery
+        expr: rate(pg_stat_statements_mean_time[5m]) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Average query time is {{ $value | humanize }}ms (threshold: 1000ms)"
+
+  # ===== NGINX ALERTS =====
+  - name: nginx-alerts
+    interval: 30s
+    rules:
+      # Nginx Down
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: web
+        annotations:
+          summary: "Nginx on {{ $labels.instance }} is DOWN"
+          description: "Cannot connect to Nginx on {{ $labels.instance }} for 5 minutes"
+
+      # High Nginx Error Rate
+      - alert: HighNginxErrorRate
+        expr: (rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: web
+        annotations:
+          summary: "Nginx high error rate on {{ $labels.instance }}"
+          description: "Nginx error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Nginx High Connections
+      - alert: NginxHighConnections
+        expr: nginx_connections_active > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: web
+        annotations:
+          summary: "Nginx has high active connections"
+          description: "Active connections: {{ $value }} (threshold: 1000)"
+
+  # ===== PROMETHEUS ALERTS =====
+  - name: prometheus-alerts
+    interval: 30s
+    rules:
+      # High Memory Usage
+      - alert: PrometheusHighMemory
+        expr: process_resident_memory_bytes{job="prometheus"} > 500000000
+        for: 10m
+        labels:
+          severity: warning
+          component: prometheus
+        annotations:
+          summary: "Prometheus is using high memory"
+          description: "Prometheus memory usage: {{ $value | humanize1024 }} (threshold: 500MB)"
+
+      # Sample Limit
+      - alert: PrometheusSampleLimit
+        expr: prometheus_tsdb_symbol_table_size_bytes > 100000000
+        for: 5m
+        labels:
+          severity: warning
+          component: prometheus
+        annotations:
+          summary: "Prometheus sample limit approaching"
+          description: "Prometheus sample size: {{ $value | humanize1024 }}"
+
+      # Slow Scrapes
+      - alert: PrometheusScrapeWarning
+        expr: histogram_quantile(0.9, rate(prometheus_sd_duration_seconds[5m])) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: prometheus
+        annotations:
+          summary: "Prometheus scrapes are slow"
+          description: "P90 scrape time: {{ $value | humanize }}s (threshold: 10s)"

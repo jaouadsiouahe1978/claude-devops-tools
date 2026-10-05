@@ -1,0 +1,127 @@
+---
+# Playbook de déploiement de l'application
+# Usage: ansible-playbook playbooks/deploy.yml -i inventory/hosts.ini
+
+- name: Deploy application
+  hosts: webservers
+  serial: "50%"  # Déploie par 50% pour éviter l'indisponibilité
+  vars:
+    backup_dir: "/opt/webapp/backups"
+    current_version_file: "/opt/webapp/VERSION"
+
+  pre_tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+      become: yes
+
+    - name: Get current version
+      shell: cat {{ current_version_file }} 2>/dev/null || echo "0.0.0"
+      register: current_version
+      changed_when: false
+
+    - name: Backup current version
+      command: "cp -r {{ app_home }} {{ backup_dir }}/app-{{ current_version.stdout }}"
+      become: yes
+      when: current_version.stdout != "0.0.0"
+
+  tasks:
+    - name: Clone or update application repository
+      git:
+        repo: "{{ app_repo }}"
+        dest: "{{ app_home }}"
+        version: "{{ app_branch }}"
+        update: yes
+        force: yes
+      notify: restart webapp
+      become: yes
+      become_user: "{{ app_user }}"
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_home }}/requirements.txt"
+        virtualenv: "{{ app_home }}/venv"
+        virtualenv_python: python3
+      become: yes
+      become_user: "{{ app_user }}"
+
+    - name: Create environment file
+      template:
+        src: app.env.j2
+        dest: "{{ app_home }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0600'
+      notify: restart webapp
+      become: yes
+
+    - name: Run database migrations
+      shell: |
+        source {{ app_home }}/venv/bin/activate
+        python manage.py migrate
+      args:
+        chdir: "{{ app_home }}"
+      become: yes
+      become_user: "{{ app_user }}"
+      ignore_errors: yes
+
+    - name: Collect static files
+      shell: |
+        source {{ app_home }}/venv/bin/activate
+        python manage.py collectstatic --noinput
+      args:
+        chdir: "{{ app_home }}"
+      become: yes
+      become_user: "{{ app_user }}"
+      ignore_errors: yes
+
+    - name: Update version file
+      copy:
+        content: "{{ app_version }}"
+        dest: "{{ current_version_file }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+      become: yes
+
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:{{ app_port }}"
+        method: GET
+        status_code: 200
+      register: webapp_status
+      until: webapp_status is succeeded
+      retries: 5
+      delay: 10
+      ignore_errors: yes
+
+    - name: Check application health
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      ignore_errors: yes
+
+  post_tasks:
+    - name: Deployment summary
+      debug:
+        msg: |
+          Deployment completed successfully!
+          Previous version: {{ current_version.stdout }}
+          New version: {{ app_version }}
+          Deployed on: {{ inventory_hostname }}
+
+    - name: Notify deployment success
+      debug:
+        msg: "App deployed successfully on {{ inventory_hostname }}"
+
+  handlers:
+    - name: restart webapp
+      service:
+        name: webapp
+        state: restarted
+        enabled: yes
+      become: yes
+      listen: "restart webapp"

@@ -1,0 +1,126 @@
+---
+# Tâches communes pour tous les serveurs
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  become: yes
+
+- name: Update system packages
+  yum:
+    name: "*"
+    state: latest
+  become: yes
+  tags:
+    - packages
+
+- name: Install required packages
+  yum:
+    name:
+      - git
+      - curl
+      - wget
+      - vim
+      - htop
+      - tmux
+      - net-tools
+      - python3
+      - python3-pip
+    state: present
+  become: yes
+  tags:
+    - packages
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    home: "{{ app_home }}"
+    shell: /bin/bash
+    createhome: yes
+  become: yes
+  tags:
+    - users
+
+- name: Configure system limits
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+  loop:
+    - "{{ app_user }} soft nofile 65536"
+    - "{{ app_user }} hard nofile 65536"
+  become: yes
+  tags:
+    - system
+
+- name: Configure SSH key-based authentication
+  authorized_key:
+    user: "{{ app_user }}"
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    exclusive: no
+  become: yes
+  become_user: "{{ app_user }}"
+  ignore_errors: yes
+  tags:
+    - ssh
+
+- name: Configure sudo for application user
+  lineinfile:
+    path: /etc/sudoers
+    line: "{{ app_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl"
+    validate: /usr/sbin/visudo -cf %s
+  become: yes
+  tags:
+    - sudo
+
+- name: Enable firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - firewall
+
+- name: Configure NTP
+  yum:
+    name: chronyd
+    state: present
+  become: yes
+
+- name: Start NTP service
+  service:
+    name: chronyd
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - ntp
+
+- name: Create log directory
+  file:
+    path: /var/log/app
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  become: yes
+  tags:
+    - logging
+
+- name: Setup log rotation
+  copy:
+    content: |
+      /var/log/app/*.log {
+          daily
+          rotate 7
+          compress
+          delaycompress
+          notifempty
+          create 0640 {{ app_user }} {{ app_group }}
+          sharedscripts
+      }
+    dest: /etc/logrotate.d/app
+  become: yes
+  tags:
+    - logging

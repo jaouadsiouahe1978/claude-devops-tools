@@ -1,0 +1,26 @@
+# Copier en config.toml (ignoré par git) puis adapter.
+
+[candidat]
+nom = "Jaouad Siouahe"
+email = "votre.adresse@gmail.com"
+telephone = "+33 6 00 00 00 00"
+linkedin = "https://www.linkedin.com/in/votre-profil"
+github = "https://github.com/jaouadsiouahe1978"
+pieces_jointes = ["cv/CV_Jaouad_DevOps.pdf"]
+bcc_soi_meme = true            # copie de chaque envoi dans votre boîte
+
+[smtp]
+host = "smtp.gmail.com"
+port = 587
+user = "votre.adresse@gmail.com"
+password_env = "SMTP_PASSWORD" # mot de passe d'application Gmail, jamais en clair ici
+
+[envoi]
+quota_journalier = 10          # anti-spam : Gmail et les recruteurs n'aiment pas les rafales
+delai_secondes = 120           # pause entre deux envois
+relance_apres_jours = 10
+data_dir = "data"
+domaines_bloques = ["example.com", "mailinator.com"]
+
+[slack]
+webhook_env = "SLACK_WEBHOOK_URL"  # optionnel : résumé de chaque envoi réel

@@ -1,0 +1,82 @@
+---
+# Role redis - Installation et configuration de Redis
+
+- name: Install Redis
+  yum:
+    name: redis
+    state: present
+  become: yes
+  tags:
+    - redis
+    - packages
+
+- name: Create Redis configuration from template
+  template:
+    src: redis.conf.j2
+    dest: /etc/redis.conf
+    backup: yes
+  become: yes
+  notify: restart redis
+  tags:
+    - redis
+    - config
+
+- name: Enable Redis service
+  service:
+    name: redis
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - redis
+
+- name: Create Redis data directory
+  file:
+    path: /var/lib/redis
+    state: directory
+    owner: redis
+    group: redis
+    mode: '0755'
+  become: yes
+
+- name: Add firewall rule for Redis
+  firewalld:
+    port: 6379/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  tags:
+    - firewall
+
+- name: Configure Redis persistence
+  lineinfile:
+    path: /etc/redis.conf
+    regexp: '^save '
+    line: 'save 900 1'
+  become: yes
+  notify: restart redis
+  tags:
+    - redis
+    - config
+
+- name: Set Redis maxmemory policy
+  lineinfile:
+    path: /etc/redis.conf
+    regexp: '^maxmemory-policy'
+    line: 'maxmemory-policy allkeys-lru'
+  become: yes
+  notify: restart redis
+  tags:
+    - redis
+    - config
+
+- name: Enable Redis monitoring
+  copy:
+    content: |
+      enabled yes
+    dest: /etc/redis-monitoring.conf
+  become: yes
+  tags:
+    - redis
+    - monitoring

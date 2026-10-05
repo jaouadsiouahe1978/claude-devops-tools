@@ -1,0 +1,53 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install basic packages
+  package:
+    name:
+      - curl
+      - wget
+      - git
+      - net-tools
+      - htop
+      - vim
+    state: present
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+    use: systemd
+
+- name: Configure sysctl for performance
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+  loop:
+    - { key: "net.core.somaxconn", value: "65535" }
+    - { key: "net.ipv4.tcp_max_syn_backlog", value: "65535" }
+    - { key: "net.ipv4.ip_local_port_range", value: "1024 65535" }
+
+- name: Enable UFW firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  ignore_errors: yes
+
+- name: Allow SSH traffic
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  ignore_errors: yes
+
+- name: Create /tmp/ansible directory
+  file:
+    path: /tmp/ansible
+    state: directory
+    mode: '0755'

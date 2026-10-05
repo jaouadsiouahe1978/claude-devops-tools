@@ -1,0 +1,40 @@
+# HAProxy Configuration Variables
+
+haproxy_version: "2.8"
+haproxy_port: 80
+haproxy_https_port: 443
+haproxy_stats_port: 8404
+haproxy_stats_uri: "/stats"
+haproxy_stats_user: "admin"
+haproxy_stats_password: "securepassword123"
+
+# Load Balancing Algorithm
+# Options: roundrobin, leastconn, uri, source
+haproxy_algorithm: "roundrobin"
+
+# Backend servers
+haproxy_backend_servers:
+  - name: "web1"
+    host: "192.168.1.11"
+    port: 8080
+  - name: "web2"
+    host: "192.168.1.12"
+    port: 8080
+  - name: "web3"
+    host: "192.168.1.13"
+    port: 8080
+
+# Health Check Configuration
+haproxy_health_check:
+  interval: 2s
+  timeout: 4s
+  rise: 3
+  fall: 2
+
+# Logging
+haproxy_syslog_facility: "local0"
+haproxy_log_level: "info"
+
+# Performance tuning
+haproxy_maxconn: 4096
+haproxy_chroot: "/var/lib/haproxy"

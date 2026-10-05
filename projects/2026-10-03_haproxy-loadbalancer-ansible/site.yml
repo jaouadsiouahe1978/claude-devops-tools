@@ -1,0 +1,58 @@
+---
+# Main Ansible Playbook for HAProxy Load Balancer Infrastructure
+# Configures HAProxy as a reverse proxy and multiple Nginx backend servers
+
+- name: Configure common settings on all servers
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+- name: Configure HAProxy load balancer
+  hosts: haproxy
+  become: yes
+  roles:
+    - haproxy
+  post_tasks:
+    - name: Display HAProxy endpoint information
+      debug:
+        msg:
+          - "HAProxy is ready for traffic!"
+          - "Web Interface: http://{{ inventory_hostname }}:{{ haproxy_stats_port }}/stats"
+          - "Statistics User: {{ haproxy_stats_user }}"
+          - "Load Balancing Algorithm: {{ haproxy_algorithm }}"
+          - "Backend Servers: {{ haproxy_backend_servers | length }}"
+
+- name: Configure Nginx backend servers
+  hosts: nginx_backend
+  become: yes
+  roles:
+    - nginx_backend
+  post_tasks:
+    - name: Display Nginx endpoint information
+      debug:
+        msg:
+          - "Nginx backend is running on {{ inventory_hostname }}"
+          - "Service Port: {{ nginx_listen_port }}"
+          - "Health Check Endpoint: http://{{ inventory_hostname }}:{{ nginx_listen_port }}{{ nginx_health_endpoint }}"
+
+- name: Verify load balancer setup
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Test load balancer endpoints
+      debug:
+        msg: |
+          Load Balancer Setup Complete!
+
+          Access the load balancer at:
+          - HTTP: http://{{ groups['haproxy'][0] }}:{{ hostvars[groups['haproxy'][0]]['haproxy_port'] }}/
+          - Stats: http://{{ groups['haproxy'][0] }}:{{ hostvars[groups['haproxy'][0]]['haproxy_stats_port'] }}/stats
+
+          Backend servers:
+          {% for server in groups['nginx_backend'] %}
+          - {{ server }}: http://{{ hostvars[server]['ansible_host'] }}:{{ hostvars[server]['nginx_listen_port'] }}/
+          {% endfor %}
+
+          Test the load balancing:
+          for i in {1..10}; do curl http://{{ groups['haproxy'][0] }}:{{ hostvars[groups['haproxy'][0]]['haproxy_port'] }}/; done

@@ -1,0 +1,101 @@
+---
+# Playbook principal - Configuration complète des serveurs
+# Usage: ansible-playbook playbooks/site.yml -i inventory/hosts.ini
+
+- name: Configure all servers
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Update system packages
+      yum:
+        name: "*"
+        state: latest
+      tags:
+        - system
+        - updates
+
+    - name: Install common utilities
+      yum:
+        name:
+          - git
+          - curl
+          - wget
+          - htop
+          - tmux
+          - vim
+        state: present
+      tags:
+        - system
+        - common
+
+    - name: Configure firewall
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+      loop:
+        - http
+        - https
+      tags:
+        - firewall
+        - security
+
+- name: Configure webservers
+  hosts: webservers
+  gather_facts: yes
+  roles:
+    - common
+    - webserver
+  tags:
+    - webservers
+    - nginx
+
+- name: Configure cache servers
+  hosts: cacheservers
+  gather_facts: yes
+  roles:
+    - common
+    - redis
+  tags:
+    - cacheservers
+    - redis
+
+- name: Configure database servers
+  hosts: dbservers
+  gather_facts: yes
+  pre_tasks:
+    - name: Check database version
+      command: psql --version
+      register: db_version
+      changed_when: false
+      ignore_errors: yes
+  roles:
+    - common
+  post_tasks:
+    - name: Database version
+      debug:
+        msg: "Database version: {{ db_version.stdout }}"
+  tags:
+    - dbservers
+
+- name: Run health checks
+  hosts: all
+  tasks:
+    - name: Check connectivity
+      ping:
+      tags:
+        - health_check
+
+    - name: Verify disk space
+      shell: df -h / | tail -1 | awk '{print $5}' | sed 's/%//g'
+      register: disk_usage
+      changed_when: false
+      tags:
+        - health_check
+
+    - name: Alert if disk usage high
+      debug:
+        msg: "WARNING: Disk usage is {{ disk_usage.stdout }}%"
+      when: disk_usage.stdout | int > 80
+      tags:
+        - health_check

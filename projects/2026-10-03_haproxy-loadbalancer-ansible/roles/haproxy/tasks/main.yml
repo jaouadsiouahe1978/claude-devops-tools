@@ -1,0 +1,75 @@
+---
+- name: Install HAProxy
+  package:
+    name: haproxy
+    state: present
+  notify: Restart HAProxy
+
+- name: Allow HTTP traffic through firewall
+  ufw:
+    rule: allow
+    port: "{{ haproxy_port }}"
+    proto: tcp
+  ignore_errors: yes
+
+- name: Allow HTTPS traffic through firewall
+  ufw:
+    rule: allow
+    port: "{{ haproxy_https_port }}"
+    proto: tcp
+  ignore_errors: yes
+
+- name: Allow HAProxy stats port through firewall
+  ufw:
+    rule: allow
+    port: "{{ haproxy_stats_port }}"
+    proto: tcp
+  ignore_errors: yes
+
+- name: Create HAProxy configuration from template
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: Restart HAProxy
+
+- name: Validate HAProxy configuration
+  command: /usr/sbin/haproxy -c -f /etc/haproxy/haproxy.cfg
+  changed_when: false
+  register: haproxy_config_check
+
+- name: Show configuration validation result
+  debug:
+    msg: "HAProxy configuration is valid"
+  when: haproxy_config_check.rc == 0
+
+- name: Enable HAProxy service
+  systemd:
+    name: haproxy
+    enabled: yes
+    state: started
+
+- name: Create HAProxy log directory
+  file:
+    path: /var/log/haproxy
+    state: directory
+    mode: '0755'
+
+- name: Configure rsyslog for HAProxy logging
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "# HAProxy logging"
+    - "$ModLoad imudp"
+    - "$UDPServerRun 514"
+    - "local0.* /var/log/haproxy/haproxy.log"
+  notify: Restart rsyslog
+
+- name: Get HAProxy stats page
+  debug:
+    msg: "HAProxy Stats: http://{{ inventory_hostname }}:{{ haproxy_stats_port }}{{ haproxy_stats_uri }}"

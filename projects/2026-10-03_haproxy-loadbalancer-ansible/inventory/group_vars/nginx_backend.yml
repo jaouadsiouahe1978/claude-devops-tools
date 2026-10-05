@@ -1,0 +1,27 @@
+# Nginx Backend Configuration Variables
+
+nginx_version: "1.24"
+nginx_listen_port: 8080
+nginx_user: "www-data"
+nginx_worker_processes: "auto"
+nginx_worker_connections: 1024
+
+# Server configuration
+nginx_server_name: "_"
+nginx_server_tokens: "off"
+
+# Default location
+nginx_default_location: "/"
+nginx_default_content: |
+  return 200 "Hello from {{ inventory_hostname }} - {{ ansible_date_time.iso8601 }}\n";
+
+# Access logging
+nginx_access_log: "/var/log/nginx/access.log"
+nginx_error_log: "/var/log/nginx/error.log"
+
+# Health check endpoint
+nginx_health_endpoint: "/health"
+
+# Performance tuning
+nginx_keepalive_timeout: 65
+nginx_client_max_body_size: "20m"
