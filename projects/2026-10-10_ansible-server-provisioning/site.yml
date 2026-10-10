@@ -1,0 +1,172 @@
+---
+- name: Configure all servers
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    # Mise à jour du système
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      tags: always
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+      tags: update
+
+    # Installation des outils essentiels
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - build-essential
+          - htop
+          - net-tools
+          - vim
+          - openssh-server
+          - openssh-client
+      when: ansible_os_family == "Debian"
+      tags: packages
+
+    # Sécurité basique
+    - name: Configure SSH key-based authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+      notify: Restart SSH
+      tags: security
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+      when: ansible_os_family == "Debian"
+      tags: security
+
+    - name: Allow SSH through firewall
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+      tags: security
+
+    - name: Create non-root user
+      user:
+        name: devops
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        createhome: yes
+      tags: users
+
+    - name: Add public key to devops user
+      authorized_key:
+        user: devops
+        state: present
+        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+      ignore_errors: yes
+      tags: users
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: ssh
+        state: restarted
+      listen: "Restart SSH"
+
+- name: Configure web servers
+  hosts: webservers
+  become: yes
+  tags: webserver
+
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Configure Nginx
+      copy:
+        content: |
+          server {
+            listen 80 default_server;
+            listen [::]:80 default_server;
+            server_name _;
+            location / {
+              return 200 "Hello from {{ ansible_hostname }}";
+            }
+          }
+        dest: /etc/nginx/sites-available/default
+      notify: Reload Nginx
+
+    - name: Allow HTTP and HTTPS through firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "80"
+        - "443"
+
+  handlers:
+    - name: Reload Nginx
+      service:
+        name: nginx
+        state: reloaded
+
+- name: Configure monitoring
+  hosts: all
+  become: yes
+  tags: monitoring
+
+  tasks:
+    - name: Install system monitoring tools
+      apt:
+        name:
+          - sysstat
+          - iotop
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Create monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== System Status ==="
+          date
+          echo "Hostname: $(hostname)"
+          echo "Uptime: $(uptime)"
+          echo "CPU Load: $(cat /proc/loadavg | awk '{print $1, $2, $3}')"
+          echo "Memory: $(free -h | grep Mem)"
+          echo "Disk: $(df -h / | tail -1)"
+        dest: /usr/local/bin/system-status.sh
+        mode: '0755'
+
+    - name: Create cron job for system monitoring
+      cron:
+        name: "Daily system status"
+        hour: "9"
+        minute: "0"
+        job: "/usr/local/bin/system-status.sh > /var/log/system-status.log 2>&1"

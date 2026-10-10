@@ -1,0 +1,39 @@
+---
+# Global variables for all hosts
+
+# System configuration
+timezone: "Europe/Paris"
+locale: "en_US.UTF-8"
+
+# Package management
+package_manager_update_cache: yes
+package_manager_cache_valid_time: 3600
+
+# Security
+enable_firewall: yes
+enable_selinux: no
+ssh_port: 22
+
+# Users
+admin_user: devops
+admin_groups:
+  - sudo
+  - docker
+
+# Monitoring
+enable_monitoring: yes
+monitoring_interval: 5m
+
+# NTP configuration
+ntp_enabled: yes
+ntp_servers:
+  - 0.debian.pool.ntp.org
+  - 1.debian.pool.ntp.org
+
+# Logging
+log_level: INFO
+log_retention_days: 30
+
+# Performance
+max_open_files: 65536
+tcp_max_syn_backlog: 1024

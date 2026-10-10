@@ -1,0 +1,47 @@
+##
+# Default Nginx Server Block
+# Configured by Ansible on {{ ansible_date_time.iso8601 }}
+##
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+
+    # Serve static files from /var/www/html
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+
+    # Main location block
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "healthy";
+        add_header Content-Type text/plain;
+    }
+
+    # API endpoint for server info (optional)
+    location /api/info {
+        return 200 '{"hostname":"{{ ansible_hostname }}","version":"1.0"}';
+        add_header Content-Type application/json;
+    }
+
+    # Deny access to .htaccess files
+    location ~ /\.ht {
+        deny all;
+    }
+
+    # Logging configuration
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1000;
+}

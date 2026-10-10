@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Test servers for Ansible provisioning
+  test-ubuntu-server:
+    image: ubuntu:22.04
+    container_name: ansible-test-ubuntu
+    hostname: ubuntu-test
+    privileged: true
+    ports:
+      - "2222:22"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    command: /lib/systemd/systemd-cgroups-agent
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+    stdin_open: true
+    tty: true
+    networks:
+      - ansible-net
+
+  # Alternative: CentOS server for testing
+  test-centos-server:
+    image: centos:7
+    container_name: ansible-test-centos
+    hostname: centos-test
+    privileged: true
+    ports:
+      - "2223:22"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    command: /usr/sbin/init
+    stdin_open: true
+    tty: true
+    networks:
+      - ansible-net
+
+networks:
+  ansible-net:
+    driver: bridge
+
+# Pour utiliser ce fichier :
+# 1. docker-compose -f docker-compose-test.yml up -d
+# 2. Configurer SSH dans les containers (voir setup-test-servers.sh)
+# 3. Mettre à jour inventory.ini avec les addresses Docker
+# 4. Exécuter les playbooks Ansible

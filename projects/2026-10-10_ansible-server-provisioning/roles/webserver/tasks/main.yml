@@ -1,0 +1,84 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Create Nginx configuration directory
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Deploy default Nginx configuration
+  template:
+    src: nginx-default.j2
+    dest: /etc/nginx/sites-available/default
+    backup: yes
+  notify: Reload Nginx
+
+- name: Enable Nginx site
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Create web root directory
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Create index.html
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Server Configured by Ansible</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 50px; background: #f0f0f0; }
+          .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          h1 { color: #333; }
+          .info { background: #e3f2fd; padding: 10px; margin: 10px 0; border-left: 4px solid #2196F3; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>✅ Server Successfully Configured!</h1>
+          <p>This server has been provisioned and configured using Ansible.</p>
+          <div class="info">
+            <strong>Hostname:</strong> {{ ansible_hostname }}<br>
+            <strong>OS:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}<br>
+            <strong>IP Address:</strong> {{ ansible_default_ipv4.address }}<br>
+            <strong>Kernel:</strong> {{ ansible_kernel }}<br>
+            <strong>Configuration Date:</strong> {{ ansible_date_time.iso8601 }}
+          </div>
+          <p>Web server (Nginx) is running and ready to serve content.</p>
+        </div>
+      </body>
+      </html>
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Allow HTTP and HTTPS through firewall
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "80"
+    - "443"
+  when: enable_firewall

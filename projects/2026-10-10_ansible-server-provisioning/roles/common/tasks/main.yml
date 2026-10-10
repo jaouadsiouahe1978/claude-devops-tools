@@ -1,0 +1,48 @@
+---
+- name: Update system packages
+  apt:
+    update_cache: yes
+    cache_valid_time: "{{ package_manager_cache_valid_time }}"
+  when: ansible_os_family == "Debian"
+
+- name: Install common packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - build-essential
+      - python3-pip
+      - htop
+      - net-tools
+      - vim
+      - unzip
+      - jq
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Install NTP service
+  apt:
+    name: ntp
+    state: present
+  when: ansible_os_family == "Debian" and ntp_enabled
+
+- name: Start and enable NTP
+  systemd:
+    name: ntp
+    state: started
+    enabled: yes
+  when: ntp_enabled
+
+- name: Configure system limits
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "* soft nofile {{ max_open_files }}"
+    - "* hard nofile {{ max_open_files }}"

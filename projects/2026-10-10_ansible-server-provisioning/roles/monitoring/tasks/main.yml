@@ -1,0 +1,95 @@
+---
+- name: Install monitoring packages
+  apt:
+    name:
+      - sysstat
+      - iotop
+      - nethogs
+      - lsof
+    state: present
+  when: ansible_os_family == "Debian" and enable_monitoring
+
+- name: Create monitoring scripts directory
+  file:
+    path: /usr/local/bin/monitoring
+    state: directory
+    mode: '0755'
+
+- name: Deploy system status script
+  copy:
+    content: |
+      #!/bin/bash
+      # System Status Monitoring Script
+      echo "=== System Status Report ==="
+      echo "Generated: $(date)"
+      echo "Hostname: $(hostname)"
+      echo ""
+      echo "=== Uptime ==="
+      uptime
+      echo ""
+      echo "=== CPU Load ==="
+      cat /proc/loadavg
+      echo ""
+      echo "=== Memory Usage ==="
+      free -h
+      echo ""
+      echo "=== Disk Usage ==="
+      df -h
+      echo ""
+      echo "=== Top 5 Processes by CPU ==="
+      ps aux --sort=-%cpu | head -6
+      echo ""
+      echo "=== Top 5 Processes by Memory ==="
+      ps aux --sort=-%mem | head -6
+      echo ""
+      echo "=== Network Connections ==="
+      netstat -tuln | grep LISTEN | wc -l
+      echo ""
+      echo "=== System Logs Issues ==="
+      dmesg | tail -5
+    dest: /usr/local/bin/monitoring/system-status.sh
+    mode: '0755'
+
+- name: Deploy disk space alert script
+  copy:
+    content: |
+      #!/bin/bash
+      # Disk Space Alert Script
+      THRESHOLD=80
+      echo "=== Disk Space Check (Threshold: ${THRESHOLD}%) ==="
+      df -H | grep -vE '^Filesystem|tmpfs|cdrom' | awk '{ print $5 " " $1 }' | while read output;
+      do
+        usage=$(echo $output | awk '{ print $1}' | cut -d'%' -f1)
+        partition=$(echo $output | awk '{ print $2 }')
+        if [ $usage -ge $THRESHOLD ]; then
+          echo "⚠️  ALERT: Partition $partition is ${usage}% full"
+        else
+          echo "✓ Partition $partition is ${usage}% full (OK)"
+        fi
+      done
+    dest: /usr/local/bin/monitoring/disk-space-check.sh
+    mode: '0755'
+
+- name: Create monitoring log directory
+  file:
+    path: /var/log/monitoring
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Setup monitoring cron job
+  cron:
+    name: "System monitoring job"
+    minute: "0"
+    hour: "*/4"
+    job: "/usr/local/bin/monitoring/system-status.sh > /var/log/monitoring/status-$(date +\\%Y\\%m\\%d-\\%H\\%M\\%S).log 2>&1"
+    user: root
+
+- name: Setup disk space check cron job
+  cron:
+    name: "Disk space alert job"
+    minute: "*/30"
+    hour: "*"
+    job: "/usr/local/bin/monitoring/disk-space-check.sh >> /var/log/monitoring/disk-space.log 2>&1"
+    user: root
