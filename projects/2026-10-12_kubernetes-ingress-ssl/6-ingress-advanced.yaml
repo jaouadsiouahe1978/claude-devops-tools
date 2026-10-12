@@ -1,0 +1,293 @@
+---
+# ConfigMap avec configuration Nginx personnalisée
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-ingress-controller-advanced
+  namespace: ingress-nginx
+data:
+  # Enable rate limiting
+  limit-rps: "100"
+  limit-connections: "10"
+
+  # Security headers
+  add-headers: "default/custom-headers"
+
+  # Enable CORS
+  enable-cors: "true"
+  cors-allow-origin: "*"
+  cors-allow-credentials: "true"
+
+  # Logging
+  log-format-upstream: '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"'
+
+  # Performance
+  worker-processes: "auto"
+  worker-connections: "10240"
+  keepalive-timeout: "65"
+  keepalive-requests: "100"
+
+  # Upstream settings
+  upstream-fail-timeout: "10s"
+  upstream-max-fails: "3"
+
+  # Compression
+  enable-gzip: "true"
+  gzip-level: "6"
+  gzip-types: "text/plain text/css text/xml text/javascript application/json"
+
+  # Buffer settings
+  client-body-buffer-size: "1m"
+  proxy-buffer-size: "4k"
+  proxy-buffers: "8 4k"
+
+---
+# ConfigMap pour headers de sécurité
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-headers
+  namespace: default
+data:
+  X-Frame-Options: "DENY"
+  X-Content-Type-Options: "nosniff"
+  X-XSS-Protection: "1; mode=block"
+  Referrer-Policy: "strict-origin-when-cross-origin"
+  Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+
+---
+# Ingress avec rate limiting
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rate-limited-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    nginx.ingress.kubernetes.io/limit-whitelist: "127.0.0.1"
+spec:
+  tls:
+  - hosts:
+    - api.example.local
+    secretName: example-local-tls
+  rules:
+  - host: api.example.local
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+
+---
+# Ingress con URL rewriting
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rewrite-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  tls:
+  - hosts:
+    - api.example.local
+    secretName: example-local-tls
+  rules:
+  - host: api.example.local
+    http:
+      paths:
+      # Rewrite /api/v1/(.*) to /v1/$1
+      - path: /api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+
+---
+# Ingress con authentication basic
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Admin Area"
+spec:
+  tls:
+  - hosts:
+    - admin.example.local
+    secretName: example-local-tls
+  rules:
+  - host: admin.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 80
+
+---
+# Secret pour basic auth (htpasswd: admin/password)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-auth
+  namespace: default
+type: Opaque
+data:
+  auth: YWRtaW46JGFwcjEkZGpmVy82cTIkRkFDLi5KQzFLSm5wLkczbFpSMHhpLgo=  # admin:password
+
+---
+# Ingress avec headers custom
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: headers-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Custom-Header: CustomValue";
+      more_set_headers "X-App-Version: v1.0";
+      more_set_headers "X-Timestamp: $date_gmt";
+    nginx.ingress.kubernetes.io/add-headers: "default/custom-headers"
+spec:
+  tls:
+  - hosts:
+    - www.example.local
+    secretName: example-local-tls
+  rules:
+  - host: www.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+
+---
+# Ingress avec caching
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cache-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_cache_valid 200 1h;
+      proxy_cache_key "$scheme$request_method$host$request_uri";
+      add_header X-Cache-Status $upstream_cache_status;
+spec:
+  tls:
+  - hosts:
+    - www.example.local
+    secretName: example-local-tls
+  rules:
+  - host: www.example.local
+    http:
+      paths:
+      - path: /static
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+
+---
+# Ingress pour canary deployment (traffic splitting)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: canary-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    # Route 10% du trafic vers la version beta
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+spec:
+  tls:
+  - hosts:
+    - api.example.local
+    secretName: example-local-tls
+  rules:
+  - host: api.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+
+---
+# PodDisruptionBudget pour haute disponibilité
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-ingress-pdb
+  namespace: ingress-nginx
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/instance: ingress-nginx
+
+---
+# HorizontalPodAutoscaler pour scaling du contrôleur
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-ingress-hpa
+  namespace: ingress-nginx
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-ingress-controller
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -1,0 +1,76 @@
+---
+# Issuer pour certificats self-signed
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: default
+spec:
+  selfSigned: {}
+
+---
+# Certificate self-signed
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-local-cert
+  namespace: default
+spec:
+  secretName: example-local-tls
+  issuerRef:
+    name: selfsigned-issuer
+  commonName: example.local
+  dnsNames:
+  - example.local
+  - www.example.local
+  - api.example.local
+  - admin.example.local
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+---
+# Certificate pour test en localhost
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: localhost-cert
+  namespace: default
+spec:
+  secretName: localhost-tls
+  issuerRef:
+    name: selfsigned-issuer
+  commonName: localhost
+  dnsNames:
+  - localhost
+  - "*.localhost"
+  - 127.0.0.1
+  duration: 2160h
+  renewBefore: 360h
+
+---
+# ClusterIssuer pour certificats self-signed (pour usage cluster-wide)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+spec:
+  selfSigned: {}
+
+---
+# Certificate cluster-wide self-signed
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cluster-wildcard-cert
+  namespace: ingress-nginx
+spec:
+  secretName: cluster-wildcard-tls
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+  commonName: "*.local"
+  dnsNames:
+  - "*.local"
+  - "*.example.com"
+  duration: 2160h
+  renewBefore: 360h

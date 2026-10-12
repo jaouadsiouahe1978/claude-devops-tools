@@ -1,0 +1,210 @@
+---
+# IngressClass pour Nginx
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: nginx
+spec:
+  controller: k8s.io/ingress-nginx
+
+---
+# Ingress simple avec routing par path
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+spec:
+  tls:
+  - hosts:
+    - example.local
+    secretName: example-local-tls
+  rules:
+  - host: example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+      - path: /app2
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-2
+            port:
+              number: 80
+
+---
+# Ingress avec routing par hostname
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hostname-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+spec:
+  tls:
+  - hosts:
+    - www.example.local
+    - api.example.local
+    - admin.example.local
+    secretName: example-local-tls
+  rules:
+  - host: www.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+  - host: api.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+  - host: admin.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 80
+
+---
+# Ingress pour routing avancé avec regex et priorité
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: advanced-routing
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  tls:
+  - hosts:
+    - api.example.local
+    secretName: example-local-tls
+  rules:
+  - host: api.example.local
+    http:
+      paths:
+      # API v1 routes
+      - path: /v1/.*
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+      # API v2 routes
+      - path: /v2/.*
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+      # Health check
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+
+---
+# Ingress avec default backend
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: default-backend
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  defaultBackend:
+    service:
+      name: web-app-1
+      port:
+        number: 80
+
+---
+# NetworkPolicy pour sécuriser le trafic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress
+  namespace: default
+spec:
+  podSelector:
+    matchLabels: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 8080
+
+---
+# NetworkPolicy pour isoler le namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allowance pour Ingress à backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-to-apps
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: web-app-1
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80

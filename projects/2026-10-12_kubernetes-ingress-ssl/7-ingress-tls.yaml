@@ -1,0 +1,243 @@
+---
+# Ingress avec TLS Termination et HTTP redirect
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tls-redirect-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    # Force redirection HTTP -> HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
+spec:
+  tls:
+  - hosts:
+    - example.local
+    - www.example.local
+    secretName: example-local-tls
+  rules:
+  - host: example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+  - host: www.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+
+---
+# Ingress multi-certificats
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: multi-cert-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  tls:
+  # Certificate 1
+  - hosts:
+    - api.example.local
+    secretName: example-local-tls
+  # Certificate 2 pour un autre domaine
+  - hosts:
+    - internal.example.local
+    secretName: internal-tls
+  # Certificate par défaut (wildcard)
+  - hosts:
+    - "*.example.local"
+    secretName: wildcard-tls
+  rules:
+  - host: api.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-backend
+            port:
+              number: 8080
+  - host: internal.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 80
+
+---
+# Ingress avec certificat Let's Encrypt automatique
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: letsencrypt-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # cert-manager will automatically provision certificate via Let's Encrypt
+    cert-manager.io/issuer: letsencrypt-staging
+    # or for production:
+    # cert-manager.io/issuer: letsencrypt-prod
+    cert-manager.io/issue-temporary-certificate: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - myapp.example.com
+    - www.myapp.example.com
+    secretName: myapp-letsencrypt-cert
+  rules:
+  - host: myapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+  - host: www.myapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+
+---
+# ConfigMap pour configuration TLS globale
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-tls-config
+  namespace: ingress-nginx
+data:
+  # Minimum TLS version
+  ssl-min-version: "TLSv1.2"
+
+  # Protocols
+  ssl-protocols: "TLSv1.2 TLSv1.3"
+
+  # Strong ciphers only
+  ssl-ciphers: "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384"
+
+  # Prefer server ciphers
+  ssl-prefer-server-ciphers: "on"
+
+  # HSTS header (30 days)
+  hsts: "true"
+  hsts-max-age: "2592000"
+  hsts-include-subdomains: "true"
+  hsts-preload: "true"
+
+  # SSL session settings
+  ssl-session-cache: "shared:SSL:10m"
+  ssl-session-timeout: "10m"
+  ssl-session-tickets: "off"
+
+  # DH parameters
+  # ssl-dh-param: "nginx-dh-param"
+
+  # Enable OCSP stapling
+  ssl-stapling: "true"
+  ssl-stapling-verify: "on"
+
+---
+# Secret pour DH parameters (optionnel mais recommandé)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dh-param
+  namespace: ingress-nginx
+data:
+  dhparam.pem: "LS0tLS1CRUdJTiBESUZGSUUtSEVMTE1BTiBQQVJBTUVURVJTLS0tLS0KTUlJQ0lBSUJBRENCQ3dZSzJkaUlJQWZnaGNDZ2dRUkFGZW9TWSBjT3k4TzA3aklQMjV3NnFwVkVDbDdsQk5RTQp6WnBxU1huRWZZMFJiR0tPeHNvM3pFWGtpMkR6Y0NzMDJHWWZMVUo5L0dBRzBDVDAxL0VpZFExRlBPV3loUnRBCi9yQ29XczBRNVliVTBOUUlEQVFBQgoKLS0tLS1FTkQgRElGRklFLUhFTExNQU4gUEFSQU1FVEVSUy0tLS0tCg=="
+
+---
+# Ingress avec configuration TLS optimisée pour performance
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: optimized-tls-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: selfsigned-issuer
+    # TLS session resumption
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      ssl_session_cache shared:SSL:10m;
+      ssl_session_timeout 10m;
+      ssl_session_tickets off;
+      ssl_stapling on;
+      ssl_stapling_verify on;
+spec:
+  tls:
+  - hosts:
+    - secure.example.local
+    secretName: example-local-tls
+  rules:
+  - host: secure.example.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app-1
+            port:
+              number: 80
+
+---
+# Monitoring des certificats avec Prometheus
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-manager-metrics
+  namespace: cert-manager
+  labels:
+    app: cert-manager
+spec:
+  ports:
+  - name: metrics
+    port: 9402
+    targetPort: 9402
+  selector:
+    app.kubernetes.io/name: cert-manager
+
+---
+# ServiceMonitor pour cert-manager (requiert Prometheus Operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  selector:
+    matchLabels:
+      app: cert-manager
+  endpoints:
+  - port: metrics
+    interval: 30s
