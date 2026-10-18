@@ -1,0 +1,93 @@
+---
+# Common role: Basic system setup on all hosts
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+  when: update_packages and ansible_os_family == "Debian"
+
+- name: Install essential packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - htop
+      - net-tools
+      - vim
+      - unzip
+      - python3-pip
+      - build-essential
+      - openssh-client
+      - fail2ban
+      - chrony
+      - ufw
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Enable and start chrony service
+  systemd:
+    name: chrony
+    enabled: yes
+    state: started
+
+- name: Create admin user
+  user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups }}"
+    shell: "{{ item.shell }}"
+    createhome: yes
+    state: present
+  loop: "{{ admin_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Add sudo privileges without password for admin users
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: "^%sudo"
+    line: "%sudo ALL=(ALL) NOPASSWD:ALL"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Create SSH directory for admin user
+  file:
+    path: "/home/{{ item.name }}/.ssh"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: '0700'
+  loop: "{{ admin_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Configure SSH directory permissions
+  file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
+- name: Enable and start fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started

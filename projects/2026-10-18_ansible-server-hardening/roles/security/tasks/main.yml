@@ -1,0 +1,109 @@
+---
+# Security role: Server hardening
+
+- name: Harden SSH configuration
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    regexp: "^#?{{ item.key }}"
+    line: "{{ item.key }} {{ item.value }}"
+  loop:
+    - { key: "Port", value: "{{ ssh_port }}" }
+    - { key: "PermitRootLogin", value: "{{ ssh_permit_root_login }}" }
+    - { key: "PasswordAuthentication", value: "{{ ssh_password_authentication }}" }
+    - { key: "PubkeyAuthentication", value: "{{ ssh_pubkey_authentication }}" }
+    - { key: "X11Forwarding", value: "no" }
+    - { key: "MaxAuthTries", value: "3" }
+    - { key: "MaxSessions", value: "2" }
+    - { key: "ClientAliveInterval", value: "300" }
+    - { key: "ClientAliveCountMax", value: "2" }
+    - { key: "Compression", value: "delayed" }
+    - { key: "UsePAM", value: "yes" }
+    - { key: "LogLevel", value: "VERBOSE" }
+  notify: Restart ssh
+
+- name: Enable UFW firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: firewall_enabled
+
+- name: Configure firewall rules
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ firewall_rules }}"
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop:
+    - avahi-daemon
+  failed_when: false
+  ignore_errors: yes
+
+- name: Set secure permissions on sensitive files
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    owner: root
+    group: root
+  loop:
+    - { path: "/etc/shadow", mode: "0640" }
+    - { path: "/etc/gshadow", mode: "0640" }
+    - { path: "/etc/ssh/sshd_config", mode: "0600" }
+    - { path: "/boot/grub/grub.cfg", mode: "0600" }
+
+- name: Set kernel parameters for security
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+  loop:
+    - { name: "net.ipv4.tcp_syncookies", value: "1" }
+    - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { name: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }
+    - { name: "net.ipv4.conf.all.send_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.log_martians", value: "1" }
+    - { name: "kernel.unprivileged_userns_clone", value: "0" }
+
+- name: Configure fail2ban for SSH
+  copy:
+    content: |
+      [Definition]
+      enabled = true
+      port = {{ ssh_port }}
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 5
+      findtime = 600
+      bantime = 3600
+    dest: /etc/fail2ban/jail.d/sshd.conf
+  notify: Restart fail2ban
+
+- name: Disable IPv6 if not needed
+  sysctl:
+    name: "{{ item }}"
+    value: "1"
+    state: present
+    sysctl_set: yes
+  loop:
+    - net.ipv6.conf.all.disable_ipv6
+    - net.ipv6.conf.default.disable_ipv6
+  when: disable_ipv6 is defined and disable_ipv6 | bool
+
+- name: Install auditd for system auditing
+  apt:
+    name: auditd
+    state: present
+
+- name: Enable and start auditd
+  systemd:
+    name: auditd
+    enabled: yes
+    state: started

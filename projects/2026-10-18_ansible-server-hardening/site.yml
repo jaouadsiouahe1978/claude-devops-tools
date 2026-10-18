@@ -1,0 +1,32 @@
+---
+# Main playbook: Complete server hardening and configuration
+
+- name: Configure all hosts
+  hosts: all
+  become: true
+
+  roles:
+    - common
+    - security
+    - monitoring
+
+- name: Configure webservers
+  hosts: webservers
+  become: true
+
+  roles:
+    - webserver
+
+- name: Post-configuration validation
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Display system information
+      debug:
+        msg: |
+          Host: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          IP Address: {{ ansible_default_ipv4.address }}
+          Uptime: {{ ansible_uptime_seconds | int // 3600 }} hours

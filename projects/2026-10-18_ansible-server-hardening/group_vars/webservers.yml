@@ -1,0 +1,34 @@
+# Variables specific to webservers group
+
+nginx_user: www-data
+nginx_worker_processes: auto
+nginx_keepalive_timeout: 65
+
+nginx_sites:
+  default:
+    listen: 80
+    server_name: _
+    root: /var/www/html
+    index: index.html
+    locations:
+      - path: /
+        directives:
+          - try_files $uri $uri/ =404
+      - path: /health
+        directives:
+          - access_log off
+          - return 200 "healthy\n"
+          - add_header Content-Type text/plain
+
+# Enable HTTPS (when certificates are available)
+enable_https: false
+ssl_certificate_path: /etc/ssl/certs/nginx.crt
+ssl_key_path: /etc/ssl/private/nginx.key
+
+# Application deployment
+app_user: www-data
+app_home: /var/www/html
+
+# Logging
+nginx_access_log: /var/log/nginx/access.log
+nginx_error_log: /var/log/nginx/error.log

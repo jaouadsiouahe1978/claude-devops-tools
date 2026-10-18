@@ -1,0 +1,13 @@
+---
+# Webserver role handlers
+
+- name: Restart Nginx
+  systemd:
+    name: nginx
+    state: restarted
+    daemon_reload: yes
+
+- name: Reload Nginx
+  systemd:
+    name: nginx
+    state: reloaded
