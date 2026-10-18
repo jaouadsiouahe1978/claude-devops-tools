@@ -1,0 +1,40 @@
+---
+# Webserver-specific playbook
+
+- name: Configure and harden webservers
+  hosts: webservers
+  become: true
+
+  pre_tasks:
+    - name: Display webserver group information
+      debug:
+        msg: "Configuring webserver: {{ inventory_hostname }}"
+
+  roles:
+    - common
+    - security
+    - webserver
+    - monitoring
+
+  post_tasks:
+    - name: Verify Nginx is running
+      systemd:
+        name: nginx
+        state: started
+      check_mode: no
+
+    - name: Check Nginx connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/"
+        method: GET
+        status_code: 200
+      retries: 3
+      delay: 2
+
+    - name: Display webserver summary
+      debug:
+        msg: |
+          Webserver: {{ inventory_hostname }}
+          Nginx Port: {{ nginx_port }}
+          Root Directory: {{ app_home }}
+          Status: Configured and Running ✓

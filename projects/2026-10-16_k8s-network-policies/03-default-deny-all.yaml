@@ -1,0 +1,47 @@
+---
+# Default Deny All Ingress in Frontend Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-ingress
+  namespace: frontend
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Default Deny All Ingress in API Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-ingress
+  namespace: api
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Default Deny All Ingress in Database Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-ingress
+  namespace: database
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Default Deny All Egress in Database Namespace (extra security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-egress
+  namespace: database
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress

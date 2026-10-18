@@ -1,0 +1,50 @@
+---
+# Allow API pods to communicate with Database pods
+# Applied in the Database namespace to allow ingress from API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-api
+  namespace: database
+spec:
+  podSelector:
+    matchLabels:
+      app: database
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: api
+      podSelector:
+        matchLabels:
+          app: api
+    ports:
+    - protocol: TCP
+      port: 3306
+
+---
+# Allow API pods to communicate externally (for database calls)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-egress-to-db
+  namespace: api
+spec:
+  podSelector:
+    matchLabels:
+      app: api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: database
+      podSelector:
+        matchLabels:
+          app: database
+    ports:
+    - protocol: TCP
+      port: 3306

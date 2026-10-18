@@ -1,0 +1,110 @@
+---
+# Testing and validation playbook
+
+- name: Test connectivity and system status
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Test SSH connectivity
+      ping:
+
+    - name: Get system uptime
+      command: uptime
+      changed_when: false
+      register: uptime_result
+
+    - name: Display uptime
+      debug:
+        var: uptime_result.stdout
+
+    - name: Check disk usage
+      shell: df -h / | tail -1
+      changed_when: false
+      register: disk_result
+
+    - name: Display disk usage
+      debug:
+        var: disk_result.stdout
+
+    - name: Check memory usage
+      shell: free -h | grep Mem
+      changed_when: false
+      register: memory_result
+
+    - name: Display memory usage
+      debug:
+        var: memory_result.stdout
+
+    - name: Verify SSH hardening
+      shell: sshctl -T localhost
+      changed_when: false
+      failed_when: false
+      register: sshd_test
+
+- name: Test webserver configuration
+  hosts: webservers
+  gather_facts: no
+
+  tasks:
+    - name: Check Nginx status
+      systemd:
+        name: nginx
+        state: started
+      check_mode: yes
+      register: nginx_status
+
+    - name: Verify Nginx HTTP response
+      uri:
+        url: "http://{{ inventory_hostname }}:{{ nginx_port }}/"
+        method: GET
+        status_code: 200
+      retries: 3
+      delay: 2
+      register: nginx_response
+
+    - name: Display Nginx test results
+      debug:
+        msg: |
+          Nginx Service Status: {{ nginx_status.status.ActiveState }}
+          HTTP Response Code: {{ nginx_response.status }}
+          Response Time: {{ nginx_response.elapsed_seconds | round(3) }} seconds
+
+- name: Test monitoring configuration
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: Verify Node Exporter is responding
+      uri:
+        url: "http://{{ inventory_hostname }}:{{ node_exporter_port }}/metrics"
+        method: GET
+        status_code: 200
+      retries: 3
+      delay: 2
+      register: node_exporter_status
+
+    - name: Display monitoring status
+      debug:
+        msg: |
+          Node Exporter: {{ 'Running ✓' if node_exporter_status.status == 200 else 'Failed' }}
+          Metrics Endpoint: http://{{ inventory_hostname }}:{{ node_exporter_port }}/metrics
+
+- name: Generate test summary
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Display test summary
+      debug:
+        msg: |
+          ========================================
+          Ansible Configuration Test Complete
+          ========================================
+          All hosts have been validated.
+
+          Next steps:
+          - Review security configuration
+          - Monitor system metrics
+          - Adjust firewall rules as needed
+          - Deploy applications

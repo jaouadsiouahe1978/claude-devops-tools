@@ -1,0 +1,27 @@
+# === UNOPTIMIZED VERSION (for comparison) ===
+# ⚠️ This Dockerfile is intentionally NOT optimized to show the differences
+# Build this and compare size with the optimized multi-stage version
+
+FROM node:18
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (both prod and dev)
+RUN npm install
+
+# Copy everything (including dev files, tests, etc.)
+COPY . .
+
+# Keep build tools and unnecessary files
+# npm cache is not cleaned
+# dev dependencies are still present
+
+EXPOSE 3000
+
+CMD ["node", "app.js"]
+
+# Expected image size: 800+ MB
+# vs optimized (multi-stage): ~120 MB

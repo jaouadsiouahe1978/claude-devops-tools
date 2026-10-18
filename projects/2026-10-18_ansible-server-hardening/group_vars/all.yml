@@ -1,0 +1,43 @@
+# Variables applied to all hosts
+
+# System settings
+timezone: UTC
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+
+# Package management
+update_cache: yes
+upgrade_packages: yes
+
+# User management
+admin_users:
+  - name: jaouad
+    groups: sudo
+    shell: /bin/bash
+
+# Security settings
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_pubkey_authentication: "yes"
+
+# Firewall settings
+firewall_enabled: true
+firewall_state: started
+firewall_rules:
+  - port: 22
+    proto: tcp
+    rule: allow
+  - port: 80
+    proto: tcp
+    rule: allow
+  - port: 443
+    proto: tcp
+    rule: allow
+
+# Monitoring
+enable_monitoring: true
+node_exporter_version: "1.6.1"
+node_exporter_port: 9100

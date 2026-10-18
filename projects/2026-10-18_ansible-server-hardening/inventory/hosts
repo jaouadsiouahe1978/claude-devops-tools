@@ -1,0 +1,41 @@
+# Ansible Inventory File
+# Defines hosts and groups for automation
+
+[all:vars]
+# Common variables for all hosts
+ansible_user = ubuntu
+ansible_ssh_private_key_file = ~/.ssh/id_rsa
+ansible_python_interpreter = /usr/bin/python3
+
+[webservers]
+# Web servers running Nginx
+web1.example.com ansible_host=192.168.1.10
+web2.example.com ansible_host=192.168.1.11
+# Local Docker containers for testing
+# server1 ansible_host=172.17.0.2 ansible_user=root
+# server2 ansible_host=172.17.0.3 ansible_user=root
+
+[webservers:vars]
+server_role = webserver
+nginx_port = 80
+
+[databases]
+# Database servers
+db1.example.com ansible_host=192.168.1.20
+db2.example.com ansible_host=192.168.1.21
+
+[databases:vars]
+server_role = database
+postgres_version = 14
+
+[monitoring]
+# Monitoring servers
+monitor1.example.com ansible_host=192.168.1.30
+
+[monitoring:vars]
+server_role = monitoring
+
+[all:children]
+webservers
+databases
+monitoring

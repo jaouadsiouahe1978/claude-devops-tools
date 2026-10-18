@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx_lb
+    ports:
+      - "80:80"
+    depends_on:
+      - app1
+      - app2
+      - app3
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  app1:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server_1
+    environment:
+      - SERVER_NAME=app1
+      - SERVER_PORT=3001
+    expose:
+      - "3001"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  app2:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server_2
+    environment:
+      - SERVER_NAME=app2
+      - SERVER_PORT=3002
+    expose:
+      - "3002"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  app3:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server_3
+    environment:
+      - SERVER_NAME=app3
+      - SERVER_PORT=3003
+    expose:
+      - "3003"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge

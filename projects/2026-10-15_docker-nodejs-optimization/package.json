@@ -1,0 +1,19 @@
+{
+  "name": "devops-app",
+  "version": "1.0.0",
+  "description": "Simple Node.js app to learn Docker optimization",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "keywords": ["docker", "nodejs", "devops"],
+  "author": "DevOps Student",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

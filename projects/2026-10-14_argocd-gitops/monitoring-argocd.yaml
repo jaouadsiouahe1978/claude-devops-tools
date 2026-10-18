@@ -1,0 +1,40 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-metrics
+  namespace: argocd
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-metrics
+  endpoints:
+  - port: metrics
+    interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-alerts
+  namespace: argocd
+spec:
+  groups:
+  - name: argocd.rules
+    interval: 30s
+    rules:
+    - alert: ArgoCDAppSyncFailure
+      expr: |
+        argocd_app_info{dest_server="https://kubernetes.default.svc", sync_status!="Synced"} > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "ArgoCD Application {{ $labels.name }} sync failed"
+    - alert: ArgoCDAppsOutOfSync
+      expr: |
+        count(argocd_app_info{sync_status!="Synced"}) > 5
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $value }} ArgoCD applications out of sync"
