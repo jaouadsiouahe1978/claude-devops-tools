@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myapp.fullname" . }}-config
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+data:
+  app-environment: {{ .Values.global.environment | quote }}
+  app-domain: {{ .Values.global.domain | quote }}
+  log-level: {{ .Values.api.env.LOG_LEVEL | quote }}
+  debug-mode: {{ .Values.api.env.DEBUG | quote }}

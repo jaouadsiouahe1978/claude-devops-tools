@@ -1,0 +1,20 @@
+1. Get the application status by running these commands:
+  kubectl get pods -l app.kubernetes.io/name=myapp,app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl get svc -l app.kubernetes.io/name=myapp,app.kubernetes.io/instance={{ .Release.Name }}
+
+2. Forward the frontend service to your local machine:
+  kubectl port-forward svc/{{ include "myapp.fullname" . }}-frontend 8080:{{ .Values.frontend.service.port }}
+
+  Then open http://localhost:8080 in your browser
+
+3. Check the API logs:
+  kubectl logs -l app.kubernetes.io/name=myapp,component=api
+
+4. Connect to the database:
+  kubectl exec -it $(kubectl get pod -l component=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U {{ .Values.postgres.env.POSTGRES_USER }} -d {{ .Values.postgres.env.POSTGRES_DB }}
+
+5. Upgrade the release with new values:
+  helm upgrade {{ .Release.Name }} . -f values-prod.yaml
+
+6. Delete the release:
+  helm uninstall {{ .Release.Name }}

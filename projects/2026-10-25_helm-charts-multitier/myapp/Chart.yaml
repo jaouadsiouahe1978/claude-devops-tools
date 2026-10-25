@@ -1,0 +1,14 @@
+apiVersion: v2
+name: myapp
+description: A Helm chart for a multi-tier application (Frontend + API + Database)
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - helm
+  - kubernetes
+  - multi-tier
+  - deployment
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

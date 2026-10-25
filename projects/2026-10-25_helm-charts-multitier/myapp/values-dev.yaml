@@ -1,0 +1,26 @@
+# Development environment overrides
+global:
+  environment: dev
+
+frontend:
+  replicaCount: 1
+  service:
+    type: ClusterIP
+
+api:
+  replicaCount: 1
+  env:
+    DEBUG: "True"
+    LOG_LEVEL: "DEBUG"
+
+postgres:
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+ingress:
+  enabled: false

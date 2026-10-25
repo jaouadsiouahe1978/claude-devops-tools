@@ -1,0 +1,101 @@
+# Global configuration
+global:
+  namespace: default
+  environment: dev
+  domain: myapp.local
+
+# Frontend configuration
+frontend:
+  enabled: true
+  name: frontend
+  image:
+    repository: nginx
+    tag: "1.24-alpine"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 80
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+  service:
+    type: LoadBalancer
+    port: 80
+
+# Backend API configuration
+api:
+  enabled: true
+  name: api
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 8000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+  service:
+    type: ClusterIP
+    port: 8000
+  env:
+    DEBUG: "False"
+    LOG_LEVEL: "INFO"
+    DATABASE_HOST: "postgres"
+    DATABASE_PORT: "5432"
+
+# PostgreSQL Database configuration
+postgres:
+  enabled: true
+  name: postgres
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  port: 5432
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  service:
+    type: ClusterIP
+    port: 5432
+  env:
+    POSTGRES_USER: "appuser"
+    POSTGRES_PASSWORD: "defaultpass123"
+    POSTGRES_DB: "appdb"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: myapp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.local
+
+# Common labels and annotations
+labels:
+  app: myapp
+  version: "1.0"
+  team: devops
+
+annotations:
+  description: "Multi-tier application deployed with Helm"

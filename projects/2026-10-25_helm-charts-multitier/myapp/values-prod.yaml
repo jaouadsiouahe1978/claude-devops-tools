@@ -1,0 +1,51 @@
+# Production environment overrides
+global:
+  environment: prod
+  domain: myapp.example.com
+
+frontend:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+  service:
+    type: LoadBalancer
+
+api:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "2000m"
+  env:
+    DEBUG: "False"
+    LOG_LEVEL: "WARNING"
+
+postgres:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-prod-tls
+      hosts:
+        - myapp.example.com
