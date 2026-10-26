@@ -1,0 +1,34 @@
+[Unit]
+Description=Mon Application Managéee par Systemd
+Documentation=file:///opt/my-app/README.md
+After=network.target
+Wants=mon-app.timer
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/my-app
+ExecStart=/usr/bin/python3 /opt/my-app/app.py
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mon-app
+
+# Ressources limitées
+CPUQuota=50%
+MemoryLimit=256M
+TasksMax=50
+
+# Comportement au redémarrage
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Permissions
+PrivateTmp=yes
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

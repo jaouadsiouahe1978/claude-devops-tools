@@ -1,0 +1,21 @@
+[Unit]
+Description=Timer pour exécuter l'application toutes les 5 minutes
+Documentation=file:///opt/my-app/README.md
+Requires=mon-app.service
+
+[Timer]
+# Exécuter toutes les 5 minutes
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+# Exécuter une fois à l'heure (exemple alternatif)
+# OnCalendar=hourly
+
+# Accuracy pour les timers moins critiques
+AccuracySec=1s
+
+# Persister l'heure de la dernière exécution
+Persistent=true
+
+[Install]
+WantedBy=timers.target
