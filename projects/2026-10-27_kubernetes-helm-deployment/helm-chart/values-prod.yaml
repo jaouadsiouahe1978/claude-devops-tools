@@ -1,0 +1,48 @@
+# Production environment values
+global:
+  environment: production
+
+frontend:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+api:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  env:
+    APP_ENV: production
+    LOG_LEVEL: WARN
+
+database:
+  storage:
+    size: 100Gi
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+healthChecks:
+  liveness:
+    failureThreshold: 5
+    periodSeconds: 10
+  readiness:
+    failureThreshold: 3
+    periodSeconds: 5

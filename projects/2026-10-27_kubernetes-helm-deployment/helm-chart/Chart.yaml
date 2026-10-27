@@ -1,0 +1,15 @@
+apiVersion: v2
+name: myapp
+description: A Helm chart for multi-tier application deployment on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - helm
+  - docker
+  - devops
+home: https://github.com/jaouadsiouahe1978/claude-devops-tools
+maintainers:
+  - name: Jaouad
+    email: jsinfo38@gmail.com

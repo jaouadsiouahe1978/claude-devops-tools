@@ -1,0 +1,102 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "myapp.fullname" . }}-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    component: database
+spec:
+  serviceName: {{ include "myapp.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . | nindent 6 }}
+      component: database
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.selectorLabels" . | nindent 8 }}
+        component: database
+    spec:
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "myapp.serviceAccountName" . }}
+      containers:
+      - name: postgres
+        image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "myapp.fullname" . }}-db-secret
+              key: db-name
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "myapp.fullname" . }}-db-secret
+              key: db-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "myapp.fullname" . }}-db-secret
+              key: db-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        {{- if .Values.healthChecks.readiness.enabled }}
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.secrets.dbUser }}
+          initialDelaySeconds: {{ .Values.healthChecks.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.readiness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthChecks.liveness.enabled }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.secrets.dbUser }}
+          initialDelaySeconds: {{ .Values.healthChecks.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.liveness.failureThreshold }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.database.resources | nindent 12 }}
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: {{ include "myapp.fullname" . }}-postgres-config
+          optional: true
+  {{- if .Values.database.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: {{ .Values.database.storage.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.database.storage.size }}
+  {{- end }}
+{{- end }}

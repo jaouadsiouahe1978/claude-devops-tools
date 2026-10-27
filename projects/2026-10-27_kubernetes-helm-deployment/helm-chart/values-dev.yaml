@@ -1,0 +1,30 @@
+# Development environment values
+global:
+  environment: development
+
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "25m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+api:
+  replicaCount: 1
+  env:
+    APP_ENV: development
+    LOG_LEVEL: DEBUG
+
+database:
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

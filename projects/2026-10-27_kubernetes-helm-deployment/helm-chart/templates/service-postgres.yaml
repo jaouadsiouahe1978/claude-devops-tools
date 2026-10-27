@@ -1,0 +1,20 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "myapp.fullname" . }}-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    component: database
+spec:
+  clusterIP: None
+  ports:
+  - port: {{ .Values.database.service.port }}
+    targetPort: postgres
+    protocol: TCP
+    name: postgres
+  selector:
+    {{- include "myapp.selectorLabels" . | nindent 4 }}
+    component: database
+{{- end }}

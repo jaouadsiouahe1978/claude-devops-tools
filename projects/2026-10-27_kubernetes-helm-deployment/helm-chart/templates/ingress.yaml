@@ -1,0 +1,22 @@
+{{- if .Values.frontend.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.frontend.ingress.className }}
+  rules:
+  - host: {{ .Values.frontend.ingress.host | quote }}
+    http:
+      paths:
+      - path: {{ .Values.frontend.ingress.path }}
+        pathType: {{ .Values.frontend.ingress.pathType }}
+        backend:
+          service:
+            name: {{ include "myapp.fullname" . }}-frontend
+            port:
+              number: {{ .Values.frontend.service.port }}
+{{- end }}

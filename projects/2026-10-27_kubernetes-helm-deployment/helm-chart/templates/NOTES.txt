@@ -1,0 +1,59 @@
+1. Get the application URL:
+{{- if .Values.frontend.ingress.enabled }}
+
+  1.a Add the following line to your /etc/hosts:
+
+    127.0.0.1 {{ .Values.frontend.ingress.host }}
+
+  1.b Visit: http://{{ .Values.frontend.ingress.host }}
+{{- else }}
+
+  1.a Port forward frontend:
+    kubectl port-forward -n {{ .Release.Namespace }} \
+      svc/{{ include "myapp.fullname" . }}-frontend 8080:{{ .Values.frontend.service.port }}
+
+  Visit: http://localhost:8080
+{{- end }}
+
+2. Monitor the deployment:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+  kubectl get services -n {{ .Release.Namespace }}
+
+3. View logs:
+
+  kubectl logs -f -n {{ .Release.Namespace }} deployment/{{ include "myapp.fullname" . }}-frontend
+
+  kubectl logs -f -n {{ .Release.Namespace }} deployment/{{ include "myapp.fullname" . }}-api
+
+4. Test the API:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "myapp.fullname" . }}-api 5000:5000 &
+
+  curl http://localhost:5000/health
+
+  curl http://localhost:5000/info
+
+5. Access the database:
+
+  kubectl exec -it -n {{ .Release.Namespace }} \
+    {{ include "myapp.fullname" . }}-postgres-0 -- \
+    psql -U {{ .Values.database.secrets.dbUser }}
+
+6. View deployment status:
+
+  helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+  helm history {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+7. Upgrade the deployment:
+
+  helm upgrade {{ .Release.Name }} ./helm-chart \
+    -f helm-chart/values-{{ .Values.global.environment }}.yaml
+
+8. Uninstall:
+
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+For more information, visit: https://helm.sh/docs/
