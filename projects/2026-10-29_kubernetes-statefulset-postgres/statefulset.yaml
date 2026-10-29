@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: postgres-demo
+spec:
+  serviceName: "postgres"  # IMPORTANT: lier au Service headless
+  replicas: 1              # Commencer avec 1 réplica
+  selector:
+    matchLabels:
+      app: postgres
+      tier: database
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      # Affiner pour éviter que le pod soit préempté
+      priorityClassName: system-cluster-critical
+
+      # Assurer que le pod reste sur le même nœud
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - postgres
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - name: postgresql
+          containerPort: 5432
+          protocol: TCP
+
+        # Variables d'environnement
+        env:
+        - name: POSTGRES_DB
+          value: postgres
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_INITDB_ARGS
+          value: "-c shared_preload_libraries=pg_stat_statements"
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+
+        # Ressources
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        # Health checks
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Points de montage
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        - name: config
+          mountPath: /etc/postgresql
+          readOnly: true
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+
+        # Sécurité
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+
+      # Volumes
+      volumes:
+      - name: config
+        configMap:
+          name: postgres-config
+          defaultMode: 0644
+      - name: init-scripts
+        configMap:
+          name: postgres-config
+          items:
+          - key: init-db.sql
+            path: 01-init-db.sql
+          defaultMode: 0755
+
+      # Répertoires temporaires (requis par PostgreSQL)
+      - name: tmp
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+
+      # Ajouter ces volumes temporaires aux volumeMounts aussi
+      # NOTE: Pour une vraie prod, considérer un initContainer pour setup les répertoires
+
+      # Politique de redémarrage
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+  # Template de PVC - créé automatiquement pour chaque pod
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      namespace: postgres-demo
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      # Pour un cluster de prod, utiliser une storage class spécifique
+      # storageClassName: "fast-ssd"

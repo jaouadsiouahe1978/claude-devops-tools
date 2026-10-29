@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: postgres-demo
+data:
+  # Paramètres PostgreSQL optimisés pour un petit cluster
+  postgresql.conf: |
+    # Connexions
+    max_connections = 100
+    superuser_reserved_connections = 3
+
+    # Mémoire
+    shared_buffers = 256MB
+    effective_cache_size = 1GB
+    maintenance_work_mem = 64MB
+    work_mem = 4MB
+
+    # Logging
+    log_statement = 'all'
+    log_duration = on
+    log_min_duration_statement = 100
+    log_directory = 'pg_log'
+    log_filename = 'postgresql.log'
+
+    # WAL et checkpoint
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+    default_statistics_target = 100
+
+  # Script d'initialisation personnalisé
+  init-db.sql: |
+    -- Créer une base de données
+    CREATE DATABASE myapp;
+
+    -- Connecter à la nouvelle base
+    \c myapp
+
+    -- Créer une table d'exemple
+    CREATE TABLE users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Créer un utilisateur applicatif (pas root)
+    CREATE ROLE appuser WITH LOGIN PASSWORD 'apppassword';
+    GRANT CONNECT ON DATABASE myapp TO appuser;
+    GRANT USAGE ON SCHEMA public TO appuser;
+    GRANT CREATE ON SCHEMA public TO appuser;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO appuser;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO appuser;
+
+    -- Données de test
+    INSERT INTO users (name, email) VALUES
+      ('Alice Smith', 'alice@example.com'),
+      ('Bob Johnson', 'bob@example.com'),
+      ('Charlie Brown', 'charlie@example.com');
+
+    -- Créer un rôle pour les backups
+    CREATE ROLE backup_user WITH LOGIN PASSWORD 'backuppassword';
+    GRANT pg_read_all_data TO backup_user;

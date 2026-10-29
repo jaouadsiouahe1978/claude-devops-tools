@@ -1,0 +1,66 @@
+---
+# Service Headless pour le StatefulSet
+# Chaque pod aura son propre DNS: postgres-N.postgres.postgres-demo.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: postgres-demo
+  labels:
+    app: postgres
+spec:
+  clusterIP: None  # Service HEADLESS - pas de load balancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgresql
+  selector:
+    app: postgres
+    tier: database
+
+  # Important pour StatefulSet: matching la spec.serviceName
+  publishNotReadyAddresses: true  # Publier les pods même avant qu'ils soient ready
+
+---
+# Service ClusterIP pour l'accès depuis d'autres pods
+# Permet de se connecter via: postgres-service.postgres-demo.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: postgres-demo
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: postgresql
+    protocol: TCP
+    name: postgresql
+  selector:
+    app: postgres
+    tier: database
+
+---
+# Service NodePort pour accès local (développement seulement)
+# kubectl port-forward -n postgres-demo service/postgres-nodeport 5432:5432
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-nodeport
+  namespace: postgres-demo
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: postgresql
+    nodePort: 30432
+    protocol: TCP
+    name: postgresql
+  selector:
+    app: postgres
+    tier: database
