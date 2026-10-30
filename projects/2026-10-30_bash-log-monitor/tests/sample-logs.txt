@@ -1,0 +1,79 @@
+# Sample Log Files for Testing Log Monitor
+# These examples demonstrate various log patterns that trigger alerts
+
+# === Normal Operation Logs (No Alert) ===
+2026-10-30 08:00:00 kernel: [    0.000000] Linux version 5.10.0 (x86_64)
+2026-10-30 08:00:01 kernel: [    0.000000] Command line: root=/dev/sda1 ro
+2026-10-30 08:00:05 systemd: Started Session 1 of user root.
+2026-10-30 08:01:00 sudo: root : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/usr/bin/tail
+2026-10-30 08:02:00 sshd[1234]: Accepted publickey for admin from 192.168.1.100 port 50234 ssh2
+2026-10-30 08:03:00 cron[5678]: (root) CMD (cd /opt && ./backup.sh)
+
+# === ERROR Patterns (Triggers Alert) ===
+2026-10-30 08:05:00 postgresql: [5-1] ERROR:  syntax error at or near "SELECT"
+2026-10-30 08:06:00 nginx: 2026/10/30 08:06:00 [error] 1234#0: *1 connect() failed
+2026-10-30 08:07:00 mysqld: 2026-10-30 08:07:00 [ERROR] [MY-010583] [Server] InnoDB
+2026-10-30 08:08:00 apache2: [error] [pid 5678:tid 4567] [client 192.168.1.50:12345] ERROR
+
+# === CRITICAL Errors ===
+2026-10-30 08:10:00 kernel: [12345.678901] Out of memory: Kill process redis (PID 987) score 100
+2026-10-30 08:11:00 kernel: Killed process 987 (redis-server) total-vm:2048000kB
+
+# === Authentication Failures ===
+2026-10-30 08:15:00 sshd[1234]: Failed password for invalid user admin from 192.168.1.200
+2026-10-30 08:16:00 sshd[1235]: Authentication failure for root from 10.0.0.50 ssh2
+2026-10-30 08:17:00 sshd[1236]: Invalid user test from 203.0.113.45
+2026-10-30 08:18:00 sudo: FAILED SU (user admin) for root by admin
+
+# === Connection Issues ===
+2026-10-30 08:20:00 app: Connection refused for backend service at 192.168.1.100:5432
+2026-10-30 08:21:00 haproxy: Connection timeout when connecting to 10.0.0.50:3306
+2026-10-30 08:22:00 network: No route to host - cannot reach 172.16.0.1
+2026-10-30 08:23:00 libvirt: error : Connect to libvirtd on localhost failed
+
+# === Segmentation Faults ===
+2026-10-30 08:25:00 kernel: [45678.901234] Process firefox[1234] caused a segmentation fault
+2026-10-30 08:26:00 kernel: Segmentation fault (core dumped)
+2026-10-30 08:27:00 systemd: httpd.service: Main process exited, code=exited, status=139/SEGV
+
+# === Disk Space Issues ===
+2026-10-30 08:30:00 kernel: No space left on device
+2026-10-30 08:31:00 postfix/postdrop: FAILED to write
+2026-10-30 08:32:00 mysql: Disk quota exceeded
+
+# === Permission Issues ===
+2026-10-30 08:35:00 sshd[1237]: Permission denied for /etc/ssh/sshd_config
+2026-10-30 08:36:00 apache2: (13)Permission denied: /var/www/html/index.html
+2026-10-30 08:37:00 Operation not permitted: cannot access /root/.ssh
+
+# === Daemon Crashes ===
+2026-10-30 08:40:00 systemd: postgresql.service: Main process exited, code=exited, status=1/FAILURE
+2026-10-30 08:41:00 systemd: redis.service: Unit entered failed state.
+2026-10-30 08:42:00 systemd: docker.service: service crashed - restarting
+
+# === Database Errors ===
+2026-10-30 08:45:00 postgresql: Deadlock detected between process 1234 and 5678
+2026-10-30 08:46:00 mysql: SQL error: Access denied for user 'admin'@'localhost'
+2026-10-30 08:47:00 mongodb: Database error - connection lost to replica set
+
+# === Timeout Issues ===
+2026-10-30 08:50:00 tomcat: Request timeout after 30000ms
+2026-10-30 08:51:00 nginx: upstream timeout while contacting backend
+2026-10-30 08:52:00 haproxy: Connection timeout establishing session
+
+# === Abort/Panic Messages ===
+2026-10-30 08:55:00 app: Fatal error during initialization
+2026-10-30 08:56:00 kernel: Kernel panic - not syncing: VFS: Unable to mount root
+2026-10-30 08:57:00 application: Aborted (core dumped)
+
+# === Info/Debug (Should NOT trigger alerts - filtered by rules) ===
+2026-10-30 09:00:00 syslog: INFO: User logged in successfully
+2026-10-30 09:01:00 application: DEBUG: Processing request from 192.168.1.100
+2026-10-30 09:02:00 systemd: Started Update UTMP about System Boot
+2026-10-30 09:03:00 kernel: NOTICE: Skipping non-critical service
+2026-10-30 09:04:00 cron: INFO: Backup completed successfully
+
+# === Specific Patterns from Configuration ===
+2026-10-30 09:05:00 auth: Illegal user root from 203.0.113.100
+2026-10-30 09:06:00 dropbear: Connection closed by 192.168.1.50
+2026-10-30 09:07:00 sshd: Disconnect from invalid user admin 192.168.1.60 port 50000
