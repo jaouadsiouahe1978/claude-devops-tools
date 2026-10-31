@@ -1,0 +1,51 @@
+---
+- name: Deploy and configure Nginx cluster
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display deployment info
+      debug:
+        msg: |
+          ================================================
+          🚀 Deploying Nginx Cluster
+          ================================================
+          Target: {{ inventory_hostname }}
+          Environment: {{ environment_name }}
+          Nginx Port: {{ nginx_port }}
+          ================================================
+
+  roles:
+    - nginx
+
+  post_tasks:
+    - name: Verify service is listening
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ nginx_port }}"
+        timeout: 10
+      tags:
+        - verify
+
+    - name: Test HTTP response
+      uri:
+        url: "http://{{ ansible_host }}:{{ nginx_port }}/"
+        method: GET
+        status_code: 200
+      register: http_response
+      tags:
+        - verify
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ================================================
+          ✅ Deployment Complete for {{ ansible_hostname }}
+          ================================================
+          Service Status: RUNNING
+          HTTP Response: {{ http_response.status }} OK
+          Listen Port: {{ nginx_port }}
+          ================================================
+      tags:
+        - verify

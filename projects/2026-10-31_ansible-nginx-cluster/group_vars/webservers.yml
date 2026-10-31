@@ -1,0 +1,23 @@
+---
+# Group variables for all webservers
+
+# Nginx Configuration
+nginx_port: 80
+nginx_worker_processes: 2
+nginx_keepalive_timeout: 65
+nginx_client_max_body_size: 20m
+nginx_gzip: on
+
+# Security
+nginx_security_headers:
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: "1; mode=block"
+
+# Performance tuning
+nginx_upstream_keepalive: 32
+nginx_proxy_cache: off
+
+# Logging
+nginx_error_log_level: warn
+nginx_access_log_format: main

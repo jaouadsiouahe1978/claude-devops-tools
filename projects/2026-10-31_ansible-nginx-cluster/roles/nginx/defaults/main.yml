@@ -1,0 +1,7 @@
+---
+nginx_port: 80
+nginx_worker_processes: auto
+nginx_keepalive_timeout: 65
+nginx_client_max_body_size: 20m
+nginx_gzip: on
+nginx_gzip_types: text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss

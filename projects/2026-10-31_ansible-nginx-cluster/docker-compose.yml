@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  web-server-1:
+    image: ubuntu:22.04
+    container_name: web-server-1
+    hostname: web-server-1
+    networks:
+      devops-net:
+        ipv4_address: 172.20.0.2
+    ports:
+      - "8001:80"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo && mkdir -p /run/sshd && echo 'root:root' | chpasswd && echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && /usr/sbin/sshd -D"
+    stdin_open: true
+    tty: true
+
+  web-server-2:
+    image: ubuntu:22.04
+    container_name: web-server-2
+    hostname: web-server-2
+    networks:
+      devops-net:
+        ipv4_address: 172.20.0.3
+    ports:
+      - "8002:80"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo && mkdir -p /run/sshd && echo 'root:root' | chpasswd && echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && /usr/sbin/sshd -D"
+    stdin_open: true
+    tty: true
+
+  web-server-3:
+    image: ubuntu:22.04
+    container_name: web-server-3
+    hostname: web-server-3
+    networks:
+      devops-net:
+        ipv4_address: 172.20.0.4
+    ports:
+      - "8003:80"
+    command: /bin/bash -c "apt-get update && apt-get install -y openssh-server sudo && mkdir -p /run/sshd && echo 'root:root' | chpasswd && echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && /usr/sbin/sshd -D"
+    stdin_open: true
+    tty: true
+
+networks:
+  devops-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

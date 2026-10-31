@@ -1,0 +1,89 @@
+---
+- name: Update APT cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags:
+    - packages
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  tags:
+    - packages
+    - nginx-install
+
+- name: Create Nginx configuration from template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+    mode: '0644'
+  notify: Restart Nginx
+  tags:
+    - nginx-config
+
+- name: Create default site index
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    mode: '0644'
+  tags:
+    - nginx-config
+
+- name: Create status page
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Nginx Status</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              .container { max-width: 600px; margin: 0 auto; }
+              .status { background: #f0f0f0; padding: 15px; border-radius: 5px; }
+              .ok { color: green; font-weight: bold; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <h1>✅ Nginx Status</h1>
+              <div class="status">
+                  <p><strong>Hostname:</strong> {{ ansible_hostname }}</p>
+                  <p><strong>IP Address:</strong> {{ ansible_host }}</p>
+                  <p><strong>Status:</strong> <span class="ok">Running</span></p>
+                  <p><strong>Uptime:</strong> Check with: systemctl status nginx</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    dest: /var/www/html/status.html
+    mode: '0644'
+  tags:
+    - nginx-config
+
+- name: Ensure Nginx is started and enabled
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  tags:
+    - nginx-service
+
+- name: Verify Nginx configuration
+  command: nginx -t
+  changed_when: false
+  tags:
+    - nginx-validate
+
+- name: Get Nginx service status
+  service_facts:
+  tags:
+    - nginx-validate
+
+- name: Display Nginx status
+  debug:
+    msg: "Nginx service is {{ ansible_facts.services['nginx.service'].state }}"
+  tags:
+    - nginx-validate
