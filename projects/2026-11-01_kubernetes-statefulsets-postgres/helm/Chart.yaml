@@ -1,0 +1,16 @@
+apiVersion: v2
+name: postgres-statefulset
+description: A Helm chart for PostgreSQL deployment on Kubernetes with StatefulSets
+type: application
+version: 0.1.0
+appVersion: "15"
+keywords:
+  - postgresql
+  - database
+  - statefulset
+  - persistence
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+sources:
+  - https://github.com/jaouadsiouahe1978/claude-devops-tools
