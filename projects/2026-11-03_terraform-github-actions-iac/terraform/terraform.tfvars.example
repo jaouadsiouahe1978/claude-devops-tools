@@ -1,0 +1,15 @@
+aws_region            = "us-east-1"
+project_name          = "terraform-github-actions-demo"
+environment           = "dev"
+vpc_cidr              = "10.0.0.0/16"
+public_subnet_cidr    = "10.0.1.0/24"
+private_subnet_cidr   = "10.0.2.0/24"
+enable_nat_gateway    = false
+enable_s3_versioning  = true
+s3_bucket_name_prefix = "terraform-demo-app"
+
+tags = {
+  Owner      = "DevOps Team"
+  Cost       = "Education"
+  Department = "Engineering"
+}
