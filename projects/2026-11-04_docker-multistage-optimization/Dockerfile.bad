@@ -1,0 +1,36 @@
+# ❌ MAUVAISE APPROCHE: Tout dans une seule étape
+# Taille résultante: ~500MB
+# Problèmes:
+# - Build tools laissés dans l'image finale
+# - Cache Python entièrement inclus
+# - Dépendances de compilation non nettoyées
+# - Trop de couches
+
+FROM python:3.11-bullseye
+
+WORKDIR /app
+
+# Installation de dépendances inutiles
+RUN apt-get update && apt-get install -y \
+    gcc \
+    build-essential \
+    git \
+    curl \
+    wget \
+    vim \
+    nano \
+    htop \
+    strace
+
+# Copie des sources
+COPY src/ .
+
+# Installation des dépendances Python
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Exposition du port
+EXPOSE 5000
+
+# Lancement
+CMD ["python", "app.py"]

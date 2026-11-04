@@ -1,0 +1,27 @@
+# ❌ Nginx sans optimisation
+# Taille: ~200MB
+# Problèmes: Compilation depuis source avec tous les modules
+
+FROM debian:bullseye
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    wget \
+    vim \
+    libpcre3-dev \
+    libssl-dev \
+    zlib1g-dev
+
+WORKDIR /build
+RUN git clone https://github.com/nginx/nginx.git && \
+    cd nginx && \
+    ./configure --prefix=/etc/nginx \
+    --with-http_ssl_module \
+    --with-http_gzip_static_module && \
+    make && \
+    make install
+
+EXPOSE 80
+CMD ["/etc/nginx/sbin/nginx", "-g", "daemon off;"]

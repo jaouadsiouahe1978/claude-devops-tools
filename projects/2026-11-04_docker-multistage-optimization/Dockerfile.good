@@ -1,0 +1,38 @@
+# ✅ BONNE APPROCHE: Optimisation basique
+# Taille résultante: ~200MB
+# Améliorations:
+# - Alpine Linux comme base
+# - Nettoyage des caches pip
+# - Moins de dépendances inutiles
+
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# Installation minimale des dépendances
+RUN apk add --no-cache \
+    gcc \
+    musl-dev
+
+# Copie des sources
+COPY src/ .
+
+# Installation des dépendances Python avec nettoyage du cache
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=2)" || exit 1
+
+# Exposition du port
+EXPOSE 5000
+
+# Lancement
+CMD ["python", "app.py"]

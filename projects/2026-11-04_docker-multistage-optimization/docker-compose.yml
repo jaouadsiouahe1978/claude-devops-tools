@@ -1,0 +1,62 @@
+version: '3.9'
+
+services:
+  # Application optimisée (multi-stage)
+  app-optimized:
+    build:
+      context: .
+      dockerfile: Dockerfile.best
+    container_name: app-optimized
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      app: "multi-stage-demo"
+      version: "1.0.0"
+
+  # Application non-optimisée (pour comparaison)
+  app-bad:
+    build:
+      context: .
+      dockerfile: Dockerfile.bad
+    container_name: app-bad
+    ports:
+      - "5001:5000"
+    environment:
+      FLASK_ENV: production
+    restart: unless-stopped
+    labels:
+      app: "bad-demo"
+
+  # Application basiquement optimisée (pour comparaison)
+  app-good:
+    build:
+      context: .
+      dockerfile: Dockerfile.good
+    container_name: app-good
+    ports:
+      - "5002:5000"
+    environment:
+      FLASK_ENV: production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      app: "good-demo"
+
+networks:
+  default:
+    name: docker-optimization
+    driver: bridge
