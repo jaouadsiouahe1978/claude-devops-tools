@@ -1,0 +1,99 @@
+name: Build, Scan & Push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'projects/2026-11-05_docker-security-registry/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/secure-app
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          cd projects/2026-11-05_docker-security-registry
+          docker build -t secure-app:${{ github.sha }} -t secure-app:latest .
+          docker save secure-app:latest -o image.tar
+
+      - name: Analyze image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: 'projects/2026-11-05_docker-security-registry/image.tar'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy'
+
+      - name: Generate Trivy JSON report
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: 'projects/2026-11-05_docker-security-registry/image.tar'
+          format: 'json'
+          output: 'trivy-report.json'
+
+      - name: Check Trivy results
+        run: |
+          CRITICAL=$(jq '[.Results[].Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-report.json)
+          HIGH=$(jq '[.Results[].Misconfigurations[]? | select(.Severity=="HIGH")] | length' trivy-report.json)
+          echo "Critical issues: $CRITICAL"
+          echo "High issues: $HIGH"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ CRITICAL vulnerabilities found!"
+            exit 1
+          fi
+
+      - name: Upload scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-report
+          path: trivy-report.json
+
+      - name: Log in to Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to registry
+        if: github.event_name == 'push'
+        run: |
+          cd projects/2026-11-05_docker-security-registry
+          docker tag secure-app:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker tag secure-app:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Summary
+        run: |
+          echo "### 📦 Build & Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** secure-app:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Report:** [View in Security Tab](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY

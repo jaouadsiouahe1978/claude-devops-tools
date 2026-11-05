@@ -1,0 +1,15 @@
+{
+  "name": "secure-app",
+  "version": "1.0.0",
+  "description": "Secure Docker application example",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo 'No tests'",
+    "lint": "echo 'Linting...'"
+  },
+  "keywords": ["docker", "security", "nodejs"],
+  "author": "Jaouad",
+  "license": "MIT",
+  "dependencies": {}
+}

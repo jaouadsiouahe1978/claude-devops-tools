@@ -1,0 +1,22 @@
+version: 0.1
+
+log:
+  level: info
+  formatter: json
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+
+http:
+  addr: :5000
+  driveContentDisposition: false
+  net: tcp
+
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 5
