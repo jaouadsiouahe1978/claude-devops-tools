@@ -1,0 +1,30 @@
+{
+  "name": "github-actions-cd-gates",
+  "version": "1.0.0",
+  "description": "GitHub Actions CD with Approval Gates Demo",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "test": "echo \"Testing...\" && exit 0",
+    "lint": "echo \"Linting code...\" && exit 0"
+  },
+  "keywords": [
+    "github-actions",
+    "ci-cd",
+    "deployment",
+    "approval-gates"
+  ],
+  "author": "Jaouad",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^15.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

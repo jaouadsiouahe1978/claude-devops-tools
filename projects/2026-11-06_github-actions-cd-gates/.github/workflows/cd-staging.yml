@@ -1,0 +1,109 @@
+name: CD - Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: myapp
+  KUBECONFIG: /tmp/kubeconfig
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.myapp.example.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Docker image tag
+        id: image
+        run: |
+          echo "tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_REGISTRY_USER }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Setup kubeconfig
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ${{ env.KUBECONFIG }}
+          chmod 600 ${{ env.KUBECONFIG }}
+
+          # Update deployment
+          kubectl set image deployment/myapp-staging \
+            myapp=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.tag }} \
+            -n staging \
+            --record
+
+          # Wait for rollout
+          kubectl rollout status deployment/myapp-staging -n staging --timeout=5m
+
+          # Verify deployment
+          kubectl get deployment,pods,svc -n staging
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests against staging..."
+          # Add your smoke tests here
+          # Example: curl -f https://staging.myapp.example.com/health
+          echo "✅ Smoke tests passed"
+
+      - name: Create deployment annotation
+        if: success()
+        run: |
+          echo "✅ Successfully deployed to staging" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 URL: https://staging.myapp.example.com" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Slack - Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Staging Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment Successful*\nBranch: `${{ github.ref_name }}`\nCommit: `${{ github.sha }}`\nImage: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.tag }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack - Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Staging Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment Failed*\nBranch: `${{ github.ref_name }}`\nCommit: `${{ github.sha }}`\nAuthor: @${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

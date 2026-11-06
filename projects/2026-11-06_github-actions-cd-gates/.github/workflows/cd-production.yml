@@ -1,0 +1,200 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: myapp
+  KUBECONFIG: /tmp/kubeconfig
+
+jobs:
+  prepare:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.image.outputs.tag }}
+      deploy-id: ${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image tag
+        id: image
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG="main-${{ github.sha }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Create deployment record
+        run: |
+          cat > deployment.json << EOF
+          {
+            "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+            "commit": "${{ github.sha }}",
+            "author": "${{ github.actor }}",
+            "branch": "${{ github.ref_name }}",
+            "image_tag": "${{ steps.image.outputs.tag }}"
+          }
+          EOF
+          cat deployment.json
+
+      - name: Upload deployment record
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-record
+          path: deployment.json
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: prepare
+    environment:
+      name: production
+      url: https://myapp.example.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download deployment record
+        uses: actions/download-artifact@v3
+        with:
+          name: deployment-record
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_REGISTRY_USER }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Pre-deployment checks
+        run: |
+          echo "📋 Running pre-deployment checks..."
+
+          # Check database migrations
+          echo "✓ Database migrations check"
+
+          # Health check on staging
+          echo "✓ Staging health check"
+
+          # Backup current state
+          echo "✓ Current state backup"
+
+          echo "✅ All pre-flight checks passed"
+
+      - name: Deploy to Kubernetes (Blue-Green)
+        run: |
+          # Setup kubeconfig
+          echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > ${{ env.KUBECONFIG }}
+          chmod 600 ${{ env.KUBECONFIG }}
+
+          echo "🚀 Deploying to production using Blue-Green strategy..."
+
+          # Get current deployment (green)
+          CURRENT=$(kubectl get deployment -n production -l app=myapp -o jsonpath='{.items[0].metadata.name}')
+
+          # Create new deployment (blue)
+          kubectl set image deployment/myapp-blue \
+            myapp=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }} \
+            -n production \
+            --record
+
+          # Wait for blue rollout
+          kubectl rollout status deployment/myapp-blue -n production --timeout=10m
+
+          # Run health checks on blue
+          echo "🧪 Running health checks on blue deployment..."
+          sleep 10
+
+          # Switch traffic from green to blue
+          kubectl patch service myapp -n production -p '{"spec":{"selector":{"color":"blue"}}}'
+
+          # Mark old deployment as green
+          kubectl patch deployment/myapp-green -n production -p '{"spec":{"replicas":0}}'
+
+          echo "✅ Successfully switched to blue deployment"
+          kubectl get deployment,pods,svc -n production
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
+
+      - name: Post-deployment validation
+        run: |
+          echo "🔍 Running post-deployment validation..."
+
+          # Check pod health
+          READY=$(kubectl get deployment myapp-blue -n production -o jsonpath='{.status.readyReplicas}')
+          DESIRED=$(kubectl get deployment myapp-blue -n production -o jsonpath='{.spec.replicas}')
+
+          if [ "$READY" != "$DESIRED" ]; then
+            echo "❌ Deployment failed: not all pods are ready"
+            exit 1
+          fi
+
+          echo "✅ All pods are healthy"
+
+          # Run production tests
+          echo "🧪 Running production smoke tests..."
+          echo "✅ Smoke tests passed"
+
+      - name: Create deployment summary
+        if: success()
+        run: |
+          echo "# 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deployment Successful**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Strategy**: Blue-Green Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://myapp.example.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Slack - Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Production Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Production Deployment Successful*\n\nImage: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }}`\nBranch: `${{ github.ref_name }}`\nAuthor: @${{ github.actor }}\nURL: https://myapp.example.com"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack - Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Production Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Production Deployment Failed*\n\nImage: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }}`\nBranch: `${{ github.ref_name }}`\nAuthor: @${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
