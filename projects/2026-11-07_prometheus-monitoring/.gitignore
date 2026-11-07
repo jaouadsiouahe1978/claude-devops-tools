@@ -1,0 +1,21 @@
+# Docker volumes
+prometheus_data/
+grafana_data/
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
