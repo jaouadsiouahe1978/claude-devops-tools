@@ -1,0 +1,14 @@
+[Unit]
+Description=Health Check for Simple Service
+Documentation=file:///opt/simple-service/README.md
+After=simple-service.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/simple-service/health-check.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=health-check
+
+# Even if health check fails, don't keep restarting it (it's triggered by timer)
+RemainAfterExit=no

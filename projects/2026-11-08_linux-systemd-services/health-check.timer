@@ -1,0 +1,18 @@
+[Unit]
+Description=Timer for Health Check of Simple Service
+Documentation=file:///opt/simple-service/README.md
+Requires=health-check.service
+
+[Timer]
+# Run every minute
+OnBootSec=30s
+OnUnitActiveSec=1min
+
+# Keep running even if system is on battery
+ConditionACPower=yes
+
+# Randomize start by up to 5 seconds to avoid thundering herd
+RandomizedDelaySec=5s
+
+[Install]
+WantedBy=timers.target

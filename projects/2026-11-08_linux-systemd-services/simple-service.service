@@ -1,0 +1,33 @@
+[Unit]
+Description=Simple Web Service Demo
+Documentation=file:///opt/simple-service/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/simple-service
+ExecStart=/opt/simple-service/app.sh
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=50%
+
+# Security and isolation
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=simple-service
+
+# Environment
+Environment="PORT=8888"
+Environment="SERVICE_LOGLEVEL=INFO"
+
+[Install]
+WantedBy=multi-user.target
